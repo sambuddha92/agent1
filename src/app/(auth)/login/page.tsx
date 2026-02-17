@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ROUTES, UI_TEXT } from '@/lib/constants';
 import { signInWithGoogle } from '@/lib/auth/oauth';
+import { Eye, EyeOff, Leaf } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -80,7 +81,9 @@ export default function LoginPage() {
       <div className="max-w-md w-full relative z-10 animate-fade-in">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="inline-block text-6xl mb-6 animate-float">🌿</div>
+          <div className="inline-block mb-6 animate-float">
+            <Leaf className="icon-3xl icon-primary mx-auto" />
+          </div>
           <h1 className="font-display text-5xl sm:text-6xl font-bold text-primary mb-4">
             Welcome Back
           </h1>
@@ -189,7 +192,11 @@ export default function LoginPage() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                  {showPassword ? (
+                    <Eye className="icon-md" />
+                  ) : (
+                    <EyeOff className="icon-md" />
+                  )}
                 </button>
               </div>
             </div>

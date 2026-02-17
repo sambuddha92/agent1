@@ -187,7 +187,8 @@ export async function saveMessage(
   role: MessageRole,
   content: string,
   modelId?: string,
-  tier?: string
+  tier?: string,
+  imageUrl?: string
 ): Promise<ChatMessage | null> {
   const supabase = createServiceClient();
 
@@ -199,6 +200,7 @@ export async function saveMessage(
       content,
       model_id: modelId || null,
       tier: tier || null,
+      image_url: imageUrl || null,
     })
     .select()
     .single();

@@ -15,28 +15,132 @@ import type { Message } from '@/types';
 // Memory Extraction Prompt
 // ============================================
 
-const MEMORY_EXTRACTION_PROMPT = `Extract key facts from this conversation. Return JSON ONLY.
+const MEMORY_EXTRACTION_PROMPT = `Extract ONLY explicitly stated facts from the USER's messages below. Return JSON ONLY.
 
-Categories:
-- preference: What they like/dislike (organic methods, colorful plants, etc)
-- constraint: Limitations (time, space, travel, pets, etc)
-- goal: What they want to achieve
-- observation: Behavioral patterns (overwatering, detail-focused, etc)
-- interaction: Communication/interaction preferences (brief responses, technical depth, etc)
-- success: Successful outcomes or approaches
-- context: Background info (work from home, has cats, etc)
+⚠️ CRITICAL RULES - DO NOT VIOLATE:
+1. ONLY extract facts the user EXPLICITLY stated in their own words
+2. DO NOT infer, assume, or add information the user didn't say
+3. DO NOT extract problems you (the assistant) suggested - only what the USER reported
+4. DO NOT extract diagnoses unless the user specifically mentioned them
+5. If the user says "my plant isn't flowering", DO NOT add "pest problems" or "disease" unless they said so
+6. Be extremely conservative - when in doubt, DO NOT extract
 
-Rules:
-1. Only extract explicit/strongly implied facts
-2. Be specific and actionable
-3. Skip temporary states
-4. Prioritize INTERACTION patterns (communication style, detail preference, engagement level)
-5. Return empty array [] if nothing found
+Categories (extract ONLY if user explicitly mentioned):
+- preference: What they explicitly said they like/dislike ("I prefer organic methods")
+- constraint: Limitations they stated ("I don't have much time", "my balcony is small")
+- goal: What they explicitly want ("I want to grow herbs for cooking")
+- observation: Their own observations about their behavior ("I tend to overwater")
+- interaction: How they want to communicate ("keep it brief", "explain why")
+- success: Outcomes they reported as successful ("my tomatoes did great")
+- context: Background they shared ("I work from home", "I have cats")
 
-Format: [{"memoryType":"preference","memoryKey":"key","memoryValue":"clear statement","confidence":0.9}]
+❌ NEGATIVE EXAMPLES (DO NOT extract):
+- User: "My Dahlia isn't flowering" → DO NOT extract "pest_problem" or "yellowing_leaves" - they didn't mention these
+- User: "What should I do?" → DO NOT extract anything - this is a question, not a statement
+- Assistant suggested: "Check for aphids" → DO NOT extract this as user context - assistant said it, not user
 
-Conversation:`;
+✅ POSITIVE EXAMPLES (DO extract):
+- User: "I prefer organic gardening" → Extract: preference/organic_methods
+- User: "I have a small balcony" → Extract: constraint/limited_space
+- User: "My basil died from overwatering" → Extract: observation/overwatering_tendency
 
+Format: [{"memoryType":"preference","memoryKey":"key","memoryValue":"clear statement","confidence":0.9,"sourceMessage":"excerpt from user message"}]
+
+USER MESSAGES (not assistant messages):`;
+
+
+// ============================================
+// Validation Logic
+// ============================================
+
+/**
+ * Validate extracted memories against actual user messages
+ * Ensures memories are grounded in what the user actually said
+ * 
+ * @param memories - Memories extracted by AI
+ * @param userMessages - Actual user messages
+ * @returns Filtered memories that passed validation
+ */
+function validateMemories(
+  memories: Array<{
+    memoryType: string;
+    memoryKey: string;
+    memoryValue: string;
+    confidence?: number;
+    sourceMessage?: string;
+  }>,
+  userMessages: Message[]
+): Array<{
+  memoryType: string;
+  memoryKey: string;
+  memoryValue: string;
+  confidence?: number;
+  source?: string;
+}> {
+  const validated = [];
+  
+  // Combine all user message text for validation
+  const userText = userMessages
+    .map(m => {
+      const content = typeof m.content === 'string' ? m.content : 
+        m.content.map(c => c.type === 'text' ? c.text : '[image]').join(' ');
+      return content;
+    })
+    .join(' ')
+    .toLowerCase();
+
+  for (const memory of memories) {
+    // Basic validation: check if key concepts from the memory appear in user messages
+    const memoryValue = memory.memoryValue.toLowerCase();
+    const memoryWords = memoryValue.split(/\s+/).filter(w => w.length > 3); // Filter short words
+    
+    // For observation/preference/goal types, be stricter
+    const strictTypes = ['observation', 'preference', 'goal', 'success', 'constraint'];
+    const isStrictType = strictTypes.includes(memory.memoryType);
+    
+    // Check if sourceMessage exists and can be found in user text
+    if (memory.sourceMessage) {
+      const sourceSnippet = memory.sourceMessage.toLowerCase();
+      const sourceWords = sourceSnippet.split(/\s+/).filter(w => w.length > 3);
+      
+      // Check if significant words from source appear in user messages
+      const matchedWords = sourceWords.filter(word => userText.includes(word));
+      const matchRatio = matchedWords.length / Math.max(sourceWords.length, 1);
+      
+      if (matchRatio >= 0.5) { // At least 50% of source words found
+        validated.push({
+          memoryType: memory.memoryType,
+          memoryKey: memory.memoryKey,
+          memoryValue: memory.memoryValue,
+          confidence: memory.confidence,
+          source: 'conversation_validated',
+        });
+        continue;
+      }
+    }
+    
+    // Fallback: check if key words from memory value appear in user text
+    const matchedWords = memoryWords.filter(word => userText.includes(word));
+    const matchRatio = matchedWords.length / Math.max(memoryWords.length, 1);
+    
+    // Stricter threshold for strict types
+    const threshold = isStrictType ? 0.6 : 0.4;
+    
+    if (matchRatio >= threshold) {
+      validated.push({
+        memoryType: memory.memoryType,
+        memoryKey: memory.memoryKey,
+        memoryValue: memory.memoryValue,
+        confidence: memory.confidence ? memory.confidence * 0.9 : 0.7, // Reduce confidence slightly
+        source: 'conversation_validated',
+      });
+    } else {
+      console.log(`[memory-extraction] Rejected memory (match ratio ${matchRatio.toFixed(2)}): ${memory.memoryKey} - ${memory.memoryValue}`);
+    }
+  }
+  
+  return validated;
+}
 
 // ============================================
 // Extraction Logic
@@ -70,12 +174,20 @@ export async function extractMemoriesFromConversation(
   }
 
   try {
-    // Format conversation for analysis
-    const conversationText = messages
-      .map(m => {
+    // CRITICAL: Only analyze USER messages to prevent extracting assistant suggestions
+    const userMessages = messages.filter(m => m.role === 'user');
+    
+    if (userMessages.length === 0) {
+      console.log('[memory-extraction] No user messages to analyze');
+      return 0;
+    }
+
+    // Format USER messages ONLY for analysis
+    const conversationText = userMessages
+      .map((m, index) => {
         const content = typeof m.content === 'string' ? m.content : 
           m.content.map(c => c.type === 'text' ? c.text : '[image]').join(' ');
-        return `${m.role === 'user' ? 'User' : 'Assistant'}: ${content}`;
+        return `[Message ${index + 1}] ${content}`;
       })
       .join('\n\n');
 
@@ -86,7 +198,7 @@ export async function extractMemoriesFromConversation(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       model: model as any,
       prompt: `${MEMORY_EXTRACTION_PROMPT}\n\n${conversationText}`,
-      temperature: 0.3, // Lower temperature for more consistent extraction
+      temperature: 0.2, // Very low temperature for strict extraction
     });
 
     // Parse the response
@@ -106,9 +218,25 @@ export async function extractMemoriesFromConversation(
       return 0;
     }
 
-    // Store extracted memories
-    const stored = await addUserMemories(userId, memories);
-    console.log(`[memory-extraction] Extracted and stored ${stored}/${memories.length} memories for user ${userId}`);
+    // VALIDATION LAYER: Verify each memory against actual user messages
+    const validatedMemories = validateMemories(memories, userMessages);
+    
+    if (validatedMemories.length === 0) {
+      console.log('[memory-extraction] All extracted memories failed validation');
+      return 0;
+    }
+
+    // Filter by confidence threshold (only store high-confidence memories)
+    const highConfidenceMemories = validatedMemories.filter(m => (m.confidence || 0) >= 0.7);
+    
+    if (highConfidenceMemories.length === 0) {
+      console.log('[memory-extraction] No high-confidence memories to store');
+      return 0;
+    }
+
+    // Store validated, high-confidence memories
+    const stored = await addUserMemories(userId, highConfidenceMemories);
+    console.log(`[memory-extraction] Stored ${stored}/${memories.length} memories (${memories.length - validatedMemories.length} failed validation, ${validatedMemories.length - highConfidenceMemories.length} below confidence threshold)`);
     
     // Also extract interaction insights (communication patterns that refine behavior)
     // These are supplementary to the AI extraction and capture behavioral patterns

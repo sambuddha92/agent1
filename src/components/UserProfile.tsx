@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { signOut } from '@/lib/auth/actions';
 import { UI_TEXT } from '@/lib/constants';
+import { ChevronDown, LogOut } from 'lucide-react';
 
 interface UserProfileProps {
   userEmail: string;
@@ -53,14 +54,9 @@ export default function UserProfile({ userEmail, userName }: UserProfileProps) {
           </div>
           <div className="text-xs text-white/70 truncate">{userEmail}</div>
         </div>
-        <svg
-          className={`w-5 h-5 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown
+          className={`icon-md text-white transition-transform ${isMenuOpen ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {/* Dropdown Menu */}
@@ -88,7 +84,7 @@ export default function UserProfile({ userEmail, userName }: UserProfileProps) {
                   </>
                 ) : (
                   <>
-                    <span className="text-lg">🚪</span>
+                    <LogOut className="icon-md" />
                     <span>{UI_TEXT.SIGN_OUT}</span>
                   </>
                 )}

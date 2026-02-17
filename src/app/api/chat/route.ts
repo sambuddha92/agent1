@@ -1,162 +1,170 @@
-import { streamText } from 'ai';
-import { FLOATGREENS_SYSTEM_PROMPT } from '@/lib/ai/prompts';
-import { assembleSoulPrompt } from '@/lib/ai/soul';
-import { selectModel } from '@/lib/ai/model-router';
 import { createClient } from '@/lib/supabase/server';
-import { extractMemoriesAsync, getUserContext } from '@/lib/memory';
-import { buildPersonalizedSystemPrompt } from '@/lib/ai/personalized-prompts';
-import {
-  createConversation,
-  saveMessage,
-  generateTitle,
-  updateConversationTitle,
-  getConversation,
-  getConversationMessages,
-  generateSummary,
-  updateConversationSummary,
-} from '@/lib/conversations';
-// import { floatgreensTools } from '@/lib/ai/tools';
+import { analyzeImage } from '@/lib/ai/image-analysis';
+import { selectModel } from '@/lib/ai/model-router';
+import { uploadImage } from '@/lib/supabase/image-storage';
+import { createConversation, saveMessage, generateTitle } from '@/lib/conversations';
+import { streamText } from 'ai';
+import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export async function POST(request: Request) {
+  try {
+    const supabase = createClient();
+    const formData = await request.formData();
+    const message = formData.get('message') as string;
+    const image = formData.get('image') as File | null;
+    const conversationId = formData.get('conversationId') as string | null;
 
-/**
- * Chat API Route - Handles streaming AI responses with conversation persistence
- * - Authenticates user
- * - Creates or resumes a conversation
- * - Saves user message to DB
- * - Fetches and injects user context for personalization
- * - Selects optimal AI model based on complexity
- * - Streams response back to client
- * - Saves assistant response to DB after stream completes
- * - Asynchronously extracts memories from conversation
- * 
- * @param req - Request with messages array and optional conversationId
- * @returns Streaming text response with X-Conversation-Id header
- */
-export async function POST(req: Request) {
-  const { messages, conversationId: incomingConversationId } = await req.json();
-
-  // Get authenticated user
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  // --- Conversation persistence ---
-  let conversationId: string = incomingConversationId;
-  let isNewConversation = false;
-
-  // Get the latest user message
-  const lastUserMessage = messages
-    .filter((m: { role: string }) => m.role === 'user')
-    .pop();
-
-  if (!conversationId) {
-    // Create a new conversation — title from first user message
-    const title = lastUserMessage
-      ? generateTitle(lastUserMessage.content)
-      : null;
-    const conversation = await createConversation(user.id, title || undefined);
-    if (!conversation) {
-      return new Response(JSON.stringify({ error: 'Failed to create conversation' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    conversationId = conversation.id;
-    isNewConversation = true;
-  } else {
-    // Verify the user owns this conversation
-    const existing = await getConversation(conversationId, user.id);
-    if (!existing) {
-      return new Response(JSON.stringify({ error: 'Conversation not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
+
+    if (!message && !image) {
+      return NextResponse.json(
+        { error: 'Message or image is required' },
+        { status: 400 }
+      );
     }
-    // If conversation had no title (edge case), set it now
-    if (!existing.title && lastUserMessage) {
-      updateConversationTitle(conversationId, generateTitle(lastUserMessage.content));
-    }
-  }
 
-  // Save the user message to the database
-  if (lastUserMessage) {
-    await saveMessage(conversationId, 'user', lastUserMessage.content);
-  }
+    let imageAnalysis: string | undefined;
+    let imageUrl: string | undefined;
+    if (image) {
+      try {
+        // Validate MIME type
+        if (!image.type.startsWith('image/')) {
+          throw new Error('Invalid file type - must be an image');
+        }
 
-  // Fetch user context for personalized prompt engineering
-  const userContext = await getUserContext(user.id);
-  
-  // Build personalized system prompt with adaptive behavior rules
-  const personalizedPrompt = userContext
-    ? buildPersonalizedSystemPrompt(FLOATGREENS_SYSTEM_PROMPT, userContext)
-    : FLOATGREENS_SYSTEM_PROMPT;
+        console.log('[POST /api/chat] Processing image:', { name: image.name, type: image.type, size: image.size });
 
-  // Assemble final prompt: SOUL (immutable identity) → System + Personalization + Context
-  const systemPrompt = assembleSoulPrompt(personalizedPrompt);
-
-  // Smart model routing — picks the cheapest model capable of handling this message
-  const { model, tier, modelId } = selectModel(messages);
-  console.log(`[chat] user=${user.id} conversation=${conversationId} tier=${tier} model=${modelId} new=${isNewConversation}`);
-
-  const result = await streamText({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    model: model as any, // Type assertion for Bedrock model compatibility
-    system: systemPrompt,
-    messages,
-    // TODO: Fix tools for AI SDK v6 - temporarily disabled
-    // tools: floatgreensTools,
-  });
-
-  // Trigger async memory extraction (fire-and-forget)
-  extractMemoriesAsync(messages, user.id);
-
-  // We need to collect the full response text to save it to the DB
-  // Use the toTextStreamResponse but also tee the stream to capture the full text
-  const response = result.toTextStreamResponse();
-
-  // Save the assistant response asynchronously after the stream is consumed
-  // We use the result.text promise which resolves when streaming completes
-  // Wrap in Promise.resolve() since result.text is PromiseLike (no .catch)
-  Promise.resolve(result.text).then(async (fullText) => {
-    await saveMessage(
-      conversationId,
-      'assistant',
-      fullText,
-      modelId,
-      tier
-    );
-    
-    // Generate and save conversation summary (async, fire-and-forget)
-    try {
-      const allMessages = await getConversationMessages(conversationId, user.id);
-      const summary = generateSummary(allMessages);
-      if (summary) {
-        await updateConversationSummary(conversationId, summary);
+        // Convert FormData file to Buffer
+        const bytes = await image.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        console.log('[POST /api/chat] Buffer created:', { bufferLength: buffer.length });
+        
+        // Upload image to Supabase and get public URL
+        const uploadedImage = await uploadImage(buffer, image.type, 'uploaded', user.id, 'Chat uploaded image');
+        imageUrl = uploadedImage.url;
+        console.log('[POST /api/chat] Image uploaded:', imageUrl);
+        
+        // Analyze the image using the original buffer and MIME type
+        console.log('[POST /api/chat] Starting image analysis...');
+        imageAnalysis = await analyzeImage(buffer, image.type);
+        console.log('[POST /api/chat] Image analyzed:', imageAnalysis);
+      } catch (err) {
+        console.error('[POST /api/chat] Image processing failed:', err);
+        // Continue with chat even if image processing fails - don't block the entire request
+        imageAnalysis = undefined;
+        imageUrl = undefined;
       }
-    } catch (err) {
-      console.error('[chat] Failed to update conversation summary:', err);
     }
-  }).catch((err) => {
-    console.error('[chat] Failed to save assistant message:', err);
-  });
 
-  // Set conversation ID header so the client knows which conversation this belongs to
-  response.headers.set('X-Conversation-Id', conversationId);
+    // Build user message with image context if available
+    let userMessage = message;
+    let hasImage = !!image;
+    
+    if (image) {
+      // Always include image analysis, even if it's "no objects found"
+      const analysisText = imageAnalysis && imageAnalysis !== 'No identifiable objects found' 
+        ? imageAnalysis 
+        : 'Image uploaded and processed (no specific objects detected)';
+      
+      // If user didn't provide text, still mention the image
+      if (!message || message.trim() === '') {
+        userMessage = `📸 Shared an image for analysis.\n\nImage Analysis: ${analysisText}`;
+      } else {
+        userMessage = `${message}\n\nImage Analysis: ${analysisText}`;
+      }
+    }
 
-  // In development, include model information in custom headers
-  if (process.env.NODE_ENV === 'development') {
-    response.headers.set('X-Model-Id', modelId);
-    response.headers.set('X-Model-Tier', tier);
+    console.log('[POST /api/chat] User message:', userMessage);
+    console.log('[POST /api/chat] Has image:', hasImage);
+    console.log('[POST /api/chat] Image URL:', imageUrl);
+
+    // Select model based on message complexity
+    const selection = selectModel([
+      { role: 'user' as const, content: userMessage, id: 'user-msg' }
+    ]);
+
+    console.log('[POST /api/chat] Selected model:', selection.modelId, 'Tier:', selection.tier);
+
+    // Create conversation if needed
+    let finalConversationId = conversationId;
+    if (!finalConversationId) {
+      const newConversation = await createConversation(user.id, generateTitle(message || (hasImage ? 'Image shared' : 'New chat')));
+      if (!newConversation) {
+        return NextResponse.json(
+          { error: 'Failed to create conversation' },
+          { status: 500 }
+        );
+      }
+      finalConversationId = newConversation.id;
+      console.log('[POST /api/chat] Created new conversation:', finalConversationId);
+    }
+
+    // Save user message to database
+    const userMessageRecord = await saveMessage(
+      finalConversationId,
+      'user',
+      message || (hasImage ? '📸 Shared an image' : 'No message'),
+      undefined,
+      undefined,
+      imageUrl
+    );
+    if (!userMessageRecord) {
+      console.error('[POST /api/chat] Failed to save user message');
+    }
+
+    // Generate streaming response with image context
+    const systemPrompt = hasImage 
+      ? `You are FloatGreens, a witty plant expert. The user has shared an image with you. Always acknowledge that you've received and analyzed the image. Keep responses SHORT, punchy, and actionable.\n\n**STYLE:**\n- Cheeky but helpful. Use sparingly: emojis (max 2), puns (max 1)\n- Conversational but precise. No fluff or repetition\n- Personalize when you know their space/plants. Stay specific.\n\n**CONSTRAINTS:**\n- Keep responses under 150 words unless they ask for detail\n- Lead with the answer/action\n- Use bullet points when listing >2 items\n- One main idea per response\n\n**YOU CAN:**\n- ID plants from photos + health checks\n- Reference user context from memory\n- Warn about weather/plant threats\n- Suggest specific next steps\n\n**DON'T:**\n- Over-explain or use jargon without reason\n- Give generic advice (be personal!)\n- Add unnecessary disclaimers or apologies\n- Use multiple paragraphs for simple answers`
+      : `You are FloatGreens, a witty plant expert. Keep responses SHORT, punchy, and actionable.\n\n**STYLE:**\n- Cheeky but helpful. Use sparingly: emojis (max 2), puns (max 1)\n- Conversational but precise. No fluff or repetition\n- Personalize when you know their space/plants. Stay specific.\n\n**CONSTRAINTS:**\n- Keep responses under 150 words unless they ask for detail\n- Lead with the answer/action\n- Use bullet points when listing >2 items\n- One main idea per response\n\n**YOU CAN:**\n- ID plants from photos + health checks\n- Reference user context from memory\n- Warn about weather/plant threats\n- Suggest specific next steps\n\n**DON'T:**\n- Over-explain or use jargon without reason\n- Give generic advice (be personal!)\n- Add unnecessary disclaimers or apologies\n- Use multiple paragraphs for simple answers`;
+
+    const result = streamText({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      model: selection.model as any,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
+    });
+
+    // Save assistant message in background after we get the full text
+    // Use Promise.resolve to handle the text properly
+    Promise.resolve(result.text)
+      .then(async (fullText) => {
+        try {
+          await saveMessage(
+            finalConversationId,
+            'assistant',
+            fullText,
+            selection.modelId,
+            selection.tier
+          );
+          console.log('[POST /api/chat] Saved assistant message');
+        } catch (error) {
+          console.error('[POST /api/chat] Error saving assistant message:', error);
+        }
+      });
+
+    // Create response with proper streaming headers
+    const response = new Response(result.textStream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Model-Id': selection.modelId || 'unknown',
+        'X-Model-Tier': selection.tier || 'standard',
+        'X-Conversation-Id': finalConversationId,
+        ...(imageUrl && { 'X-Image-Url': imageUrl }),
+      },
+    });
+
+    return response;
+  } catch (error) {
+    console.error('[POST /api/chat] Error:', error);
+    const msg = error instanceof Error ? error.message : 'Failed to generate response';
+    return NextResponse.json(
+      { error: msg },
+      { status: 500 }
+    );
   }
-
-  return response;
 }

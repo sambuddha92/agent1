@@ -1,85 +1,118 @@
-import Link from 'next/link';
-import { ROUTES, UI_TEXT } from '@/lib/constants';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/actions';
-import UserProfile from '@/components/UserProfile';
+import { API_ENDPOINTS } from '@/lib/constants';
+import MobileHeader from '@/components/MobileHeader';
+import AppSidebar from '@/components/AppSidebar';
+import type { User } from '@supabase/supabase-js';
+import type { Conversation } from '@/types';
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser();
-  
-  return (
-    <div className="flex h-screen bg-surface">
-      {/* Sidebar Navigation */}
-      <aside className="w-72 gradient-forest text-white shadow-xl flex flex-col">
-        <div className="p-8 border-b border-white/10">
-          <Link href={ROUTES.HOME} className="flex items-center gap-3 group">
-            <span className="text-4xl group-hover:animate-pulse-soft">🌿</span>
-            <div>
-              <h2 className="font-display text-2xl font-bold">{UI_TEXT.APP_NAME}</h2>
-              <p className="text-xs text-white/70 mt-1">{UI_TEXT.APP_TAGLINE}</p>
-            </div>
-          </Link>
-        </div>
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+    }
+    loadUser();
+  }, []);
+
+  // Load conversations
+  useEffect(() => {
+    async function loadConversations() {
+      try {
+        const response = await fetch(API_ENDPOINTS.CONVERSATIONS);
+        if (response.ok) {
+          const data = await response.json();
+          setConversations(data);
+        }
+      } catch (error) {
+        console.error('[layout] Failed to load conversations:', error);
+      }
+    }
+    loadConversations();
+
+    // Listen for conversation updates from chat page
+    const handleConversationCreated = () => {
+      loadConversations();
+    };
+
+    window.addEventListener('conversationCreated', handleConversationCreated);
+    
+    return () => {
+      window.removeEventListener('conversationCreated', handleConversationCreated);
+    };
+  }, []);
+
+  const handleMenuToggle = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleMenuClose = () => {
+    setIsMenuOpen(false);
+  };
+
+  const handleNewChat = () => {
+    setCurrentConversationId(null);
+    router.push('/chat');
+  };
+
+  const handleLoadConversation = (id: string) => {
+    setCurrentConversationId(id);
+    router.push(`/chat?id=${id}`);
+  };
+
+  const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm('Delete this conversation? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_ENDPOINTS.CONVERSATIONS}/${conversationId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setConversations((prev) => prev.filter((c) => c.id !== conversationId));
         
-        <nav className="flex-1 px-4 py-6 space-y-1">
-          <Link href={ROUTES.CHAT} className="nav-link group">
-            <span className="text-2xl group-hover:scale-110 transition-transform">💬</span>
-            <div className="flex-1">
-              <span className="font-semibold block">Chat</span>
-              <span className="text-xs text-white/70">Ask your AI companion</span>
-            </div>
-          </Link>
-          
-          <Link href={ROUTES.GARDEN} className="nav-link group">
-            <span className="text-2xl group-hover:scale-110 transition-transform">🌱</span>
-            <div className="flex-1">
-              <span className="font-semibold block">My Garden</span>
-              <span className="text-xs text-white/70">Track your plants</span>
-            </div>
-          </Link>
-          
-          <Link href={ROUTES.DREAM} className="nav-link group">
-            <span className="text-2xl group-hover:scale-110 transition-transform">🎨</span>
-            <div className="flex-1">
-              <span className="font-semibold block">Visualize</span>
-              <span className="text-xs text-white/70">Design your space</span>
-            </div>
-          </Link>
-          
-          <Link href={ROUTES.BLOOM} className="nav-link group">
-            <span className="text-2xl group-hover:scale-110 transition-transform">🗺️</span>
-            <div className="flex-1">
-              <span className="font-semibold block">Neighborhood</span>
-              <span className="text-xs text-white/70">Local community</span>
-            </div>
-          </Link>
-        </nav>
+        if (conversationId === currentConversationId) {
+          handleNewChat();
+        }
+      }
+    } catch (error) {
+      console.error('[layout] Error deleting conversation:', error);
+    }
+  };
 
-        <div className="p-6 border-t border-white/10 space-y-4">
-          {/* User Profile */}
-          {user && (
-            <UserProfile 
-              userEmail={user.email || ''} 
-              userName={user.user_metadata?.full_name}
-            />
-          )}
+  return (
+    <div className="app-layout">
+      {/* Mobile Header */}
+      <MobileHeader onMenuToggle={handleMenuToggle} isMenuOpen={isMenuOpen} />
 
-          {/* Pro Tip */}
-          <div className="bg-white/10 rounded-xl p-5 backdrop-blur">
-            <div className="flex items-start gap-3 mb-2">
-              <span className="text-xl">💡</span>
-              <div>
-                <p className="text-xs font-semibold text-white/90 mb-1">Pro Tip</p>
-                <p className="text-sm text-white/80 leading-relaxed">
-                  Water early morning or evening for best absorption.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
-      
+      {/* Sidebar/Drawer */}
+      <AppSidebar
+        isOpen={isMenuOpen}
+        onClose={handleMenuClose}
+        userEmail={user?.email || ''}
+        userName={user?.user_metadata?.full_name}
+        conversations={conversations}
+        currentConversationId={currentConversationId}
+        onNewChat={handleNewChat}
+        onLoadConversation={handleLoadConversation}
+        onDeleteConversation={handleDeleteConversation}
+      />
+
       {/* Main Content */}
-      <main className="flex-1 overflow-auto scrollbar-custom">
+      <main className="app-main">
         {children}
       </main>
     </div>

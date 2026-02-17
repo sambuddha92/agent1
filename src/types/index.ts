@@ -212,6 +212,7 @@ export interface ChatMessage {
   content: string;
   model_id: string | null;
   tier: string | null;
+  image_url?: string | null;
   created_at: string;
 }
 
@@ -227,6 +228,7 @@ export interface Message {
   content: string | MessageContent[];
   modelId?: string; // Bedrock model ID (only in development)
   tier?: ModelTier; // Model tier used (only in development)
+  imageUrl?: string; // URL of uploaded/shared image
 }
 
 export interface MessageContent {
@@ -236,7 +238,7 @@ export interface MessageContent {
   [key: string]: unknown;
 }
 
-export type ModelTier = 'T1' | 'T2' | 'T3' | 'T4' | 'T5';
+export type ModelTier = 'T1' | 'T2' | 'T3';
 
 export interface ModelSelection {
   model: unknown; // Bedrock model instance
@@ -247,6 +249,20 @@ export interface ModelSelection {
 // ============================================
 // Image Generation Types
 // ============================================
+
+export interface Image {
+  id: string;
+  user_id: string;
+  type: ImageType;
+  storage_path: string;
+  url: string;
+  description?: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ImageType = 'uploaded' | 'generated';
 
 export interface GenerateImageResult {
   imageUrl: string;

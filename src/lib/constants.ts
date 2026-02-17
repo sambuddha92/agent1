@@ -101,24 +101,27 @@ export const WEATHER_CONFIG = {
 } as const;
 
 // ============================================
-// AI Model Configuration
+// AI Model Configuration (3-Tier System)
 // ============================================
 
 export const MODEL_CONFIG = {
-  // Model IDs - DO NOT MODIFY (cost-critical)
-  T1_MODEL: 'amazon.nova-micro-v1:0',
-  T2_MODEL: 'amazon.nova-lite-v1:0',
-  T3_MODEL: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
-  T4_MODEL: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
-  T5_MODEL: 'us.anthropic.claude-3-opus-20240229-v1:0',
+  // Primary Models - Optimized for cost & UX
+  T1_MODEL: 'amazon.nova-pro-v1:0',              // Simple tasks, greetings, Q&A
+  T2_MODEL: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',  // Medium complexity, detailed guidance
+  T3_MODEL: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0', // Complex tasks, planning, design
   
-  // Classification thresholds - DO NOT MODIFY (cost optimization)
+  // Fallback Models - Always available (cost-effective)
+  T1_FALLBACK: 'amazon.nova-lite-v1:0',
+  T2_FALLBACK: 'amazon.nova-pro-v1:0',
+  T3_FALLBACK: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+  T3_FALLBACK_SECONDARY: 'amazon.nova-pro-v1:0',
+  
+  // Classification thresholds
   SHORT_MESSAGE_LENGTH: 30,
-  MEDIUM_MESSAGE_LENGTH: 200,
+  MEDIUM_MESSAGE_LENGTH: 150,
   LONG_MESSAGE_LENGTH: 300,
-  VERY_LONG_MESSAGE_LENGTH: 500,
-  MULTI_QUESTION_THRESHOLD: 3,
-  LONG_CONVERSATION_THRESHOLD: 8,
+  MULTI_QUESTION_THRESHOLD: 2,
+  LONG_CONVERSATION_THRESHOLD: 6,
 } as const;
 
 // ============================================

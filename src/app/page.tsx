@@ -1,7 +1,14 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { ROUTES, UI_TEXT } from '@/lib/constants';
+import { getCurrentUser } from '@/lib/auth/actions';
 
-export default function Home() {
+export default async function Home() {
+  // Redirect authenticated users to chat
+  const user = await getCurrentUser();
+  if (user) {
+    redirect(ROUTES.CHAT);
+  }
   return (
     <div className="min-h-screen gradient-nature">
       {/* Decorative background elements */}
