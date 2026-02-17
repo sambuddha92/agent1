@@ -1,13 +1,96 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+// ============================================
+// Environment Variable Validation
+// ============================================
+
+/**
+ * Validate required Supabase environment variables
+ * Throws early with clear error message if missing
+ * 
+ * @throws {Error} If required environment variables are not set
+ */
+function validateSupabaseEnv(): void {
+  const required = [
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  ];
+
+  for (const envVar of required) {
+    if (!process.env[envVar]) {
+      throw new Error(
+        `Missing required environment variable: ${envVar}. ` +
+        'Please check your .env.local file.'
+      );
+    }
+  }
+}
+
+/**
+ * Validate Supabase service role key availability
+ * Throws early if missing - service client requires this key
+ * 
+ * @throws {Error} If service role key is not set
+ */
+function validateServiceRoleKey(): void {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error(
+      'Missing SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
+      'Service client operations will fail. Check your .env.local file.'
+    );
+  }
+}
+
+// ============================================
+// Cookie Handler Utilities
+// ============================================
+
+/**
+ * Safely handle cookie set operations
+ * Catches and logs Server Component context errors without breaking
+ * 
+ * @param setter - Cookie setter function
+ * @param errorContext - Context for logging (e.g., "set session cookie")
+ */
+function safeCookieOperation(
+  setter: () => void,
+  errorContext: string
+): void {
+  try {
+    setter();
+  } catch (error) {
+    // Silent in Server Components, but log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.debug(
+        `[supabase-server] Cookie operation failed (${errorContext}). ` +
+        'This is normal in Server Components when middleware handles session refresh.'
+      );
+    }
+  }
+}
+
+// ============================================
+// Server Client Creation
+// ============================================
+
 /**
  * Create a Supabase client for server-side usage (Server Components, API Routes)
  * Handles cookie-based authentication with automatic session refresh
  * 
  * @returns Configured Supabase server client with user-level permissions
+ * @throws {Error} If environment variables are missing
+ * 
+ * @example
+ * ```typescript
+ * const supabase = createClient();
+ * const { data: { user } } = await supabase.auth.getUser();
+ * ```
  */
 export function createClient() {
+  // Validate environment before creating client
+  validateSupabaseEnv();
+
   const cookieStore = cookies();
 
   return createServerClient(
@@ -19,19 +102,16 @@ export function createClient() {
           return cookieStore.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value, ...options });
-          } catch {
-            // The `set` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing sessions.
-          }
+          safeCookieOperation(
+            () => cookieStore.set({ name, value, ...options }),
+            'set'
+          );
         },
         remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: '', ...options });
-          } catch {
-            // The `delete` method was called from a Server Component.
-          }
+          safeCookieOperation(
+            () => cookieStore.set({ name, value: '', ...options }),
+            'remove'
+          );
         },
       },
     }

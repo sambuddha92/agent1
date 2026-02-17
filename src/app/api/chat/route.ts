@@ -4,6 +4,7 @@ import { selectModel } from '@/lib/ai/model-router';
 import { uploadImage } from '@/lib/supabase/image-storage';
 import { createConversation, saveMessage, generateTitle } from '@/lib/conversations';
 import { FLOATGREENS_SYSTEM_PROMPT } from '@/lib/ai/prompts';
+import { chatRequestSchema, validateAndFormat } from '@/lib/validation';
 import { streamText } from 'ai';
 import { NextResponse } from 'next/server';
 
@@ -11,20 +12,35 @@ export async function POST(request: Request) {
   try {
     const supabase = createClient();
     const formData = await request.formData();
-    const message = formData.get('message') as string;
+
+    // Extract and validate input using Zod schema
+    const message = formData.get('message') as string | null;
     const image = formData.get('image') as File | null;
     const conversationId = formData.get('conversationId') as string | null;
+
+    // Validate request data
+    const validation = validateAndFormat(chatRequestSchema, {
+      message: message || '',
+      image: image || undefined,
+      conversationId: conversationId || undefined,
+    });
+
+    if (!validation.success) {
+      console.warn('[POST /api/chat] Validation failed:', validation.errors);
+      return NextResponse.json(
+        { 
+          error: 'Validation failed',
+          details: validation.errors,
+        },
+        { status: 400 }
+      );
+    }
+
+    const validated = validation.data;
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!message && !image) {
-      return NextResponse.json(
-        { error: 'Message or image is required' },
-        { status: 400 }
-      );
     }
 
     let imageAnalysis: string | undefined;
@@ -155,16 +171,25 @@ export async function POST(request: Request) {
       }
     })();
 
-    // Create response with proper streaming headers
+    // Log model selection for monitoring (not exposed to client)
+    console.log('[POST /api/chat] ✓ Response streaming:', {
+      modelId: selection.modelId,
+      tier: selection.tier,
+      conversationId: finalConversationId,
+      hasImage: hasImage,
+    });
+
+    // Create response with secure headers (no internal metadata exposed)
+    // X-Conversation-Id is safe to expose - client needs it to track messages
+    // X-Model-* headers removed to prevent information leakage
     const response = new Response(result.textStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'X-Model-Id': selection.modelId || 'unknown',
-        'X-Model-Tier': selection.tier || 'standard',
+        // Safe header: client needs conversation ID for UI updates
         'X-Conversation-Id': finalConversationId,
-        ...(imageUrl && { 'X-Image-Url': imageUrl }),
+        // Remove X-Model-Id and X-Model-Tier to prevent internal detail exposure
       },
     });
 
