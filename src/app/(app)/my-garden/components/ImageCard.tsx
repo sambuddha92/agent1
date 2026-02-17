@@ -2,6 +2,7 @@
 
 import { memo } from 'react';
 import Image from 'next/image';
+import { Bot, Upload, Heart, Star, Trash2 } from 'lucide-react';
 import type { Image as ImageType } from '@/types';
 
 interface ImageCardProps {
@@ -55,8 +56,8 @@ function ImageCard({
         <div className="flex justify-between items-start">
           {/* Type Badge */}
           <div className="inline-flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded text-xs text-white font-medium">
-            {image.type === 'generated' ? '🤖' : '📤'}
-            <span className="capitalize">{image.type}</span>
+            {image.type === 'generated' ? <Bot size={14} /> : <Upload size={14} />}
+            <span className="capitalize ml-1">{image.type}</span>
           </div>
 
           {/* Favorite Button */}
@@ -69,7 +70,7 @@ function ImageCard({
             title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
             aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
           >
-            <span className="text-lg">{isFavorite ? '❤️' : '🤍'}</span>
+            <Heart size={20} className={isFavorite ? 'fill-current' : ''} />
           </button>
         </div>
 
@@ -98,7 +99,7 @@ function ImageCard({
               title="Delete image"
               aria-label="Delete image"
             >
-              <span>🗑️</span>
+              <Trash2 size={16} />
             </button>
           </div>
         </div>
@@ -107,7 +108,7 @@ function ImageCard({
       {/* Favorite Badge (always visible) */}
       {isFavorite && (
         <div className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-1 bg-yellow-500 rounded-full text-xs font-bold text-white shadow-lg">
-          ⭐
+          <Star size={12} className="fill-current" />
         </div>
       )}
     </div>

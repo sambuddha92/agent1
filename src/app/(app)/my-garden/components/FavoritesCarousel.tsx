@@ -2,6 +2,7 @@
 
 import { useRef, memo } from 'react';
 import type { Image as ImageType } from '@/types';
+import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import ImageCard from './ImageCard';
 
 interface FavoritesCarouselProps {
@@ -35,7 +36,7 @@ function FavoritesCarousel({
       <div className="flex items-center justify-between mb-6 sm:mb-8">
         <div>
           <h2 className="font-display text-2xl sm:text-3xl font-bold text-primary flex items-center gap-2">
-            <span>⭐</span> Your Favorites
+            <Star size={20} className="fill-current text-yellow-500" /> Your Favorites
           </h2>
           <p className="text-text-secondary text-sm mt-1">
             {images.length} {images.length === 1 ? 'photo' : 'photos'} you&apos;ve loved
@@ -51,7 +52,7 @@ function FavoritesCarousel({
               aria-label="Scroll left"
               title="Scroll left"
             >
-              <span className="text-lg">←</span>
+              <ChevronLeft size={20} />
             </button>
             <button
               onClick={() => scroll('right')}
@@ -59,7 +60,7 @@ function FavoritesCarousel({
               aria-label="Scroll right"
               title="Scroll right"
             >
-              <span className="text-lg">→</span>
+              <ChevronRight size={20} />
             </button>
           </div>
         )}

@@ -2,6 +2,7 @@
 
 import { memo } from 'react';
 import Image from 'next/image';
+import { Bot } from 'lucide-react';
 import type { Message } from '@/types';
 
 interface MessageBubbleProps {
@@ -47,7 +48,7 @@ export const MessageBubble = memo(function MessageBubble({ message }: MessageBub
           <div className="chat-bubble-metadata">
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <span className="inline-flex items-center gap-1.5 bg-surface/50 px-2 py-1 rounded-md">
-                <span className="text-primary font-semibold">🤖</span>
+                <Bot size={14} className="text-primary" />
                 <span className="font-mono text-xs">{message.modelId}</span>
               </span>
               <span className="inline-flex items-center gap-1.5 bg-surface/50 px-2 py-1 rounded-md">

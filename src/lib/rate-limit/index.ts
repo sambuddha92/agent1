@@ -299,6 +299,11 @@ export function stopRateLimiters(): void {
   }
 }
 
+// Declare the custom property on the global object
+declare global {
+  var rateLimitersStopped: boolean;
+}
+
 // Auto-cleanup on module unload (if applicable)
 if (typeof global !== 'undefined') {
   if (!global.rateLimitersStopped) {

@@ -2,6 +2,7 @@
 
 import { memo } from 'react';
 import type { Image as ImageType } from '@/types';
+import { InboxIcon } from 'lucide-react';
 import ImageCard from './ImageCard';
 
 interface ImageGalleryProps {
@@ -20,7 +21,9 @@ function ImageGallery({
   if (images.length === 0) {
     return (
       <div className="text-center py-12 sm:py-16">
-        <div className="text-5xl mb-4 opacity-50">📭</div>
+        <div className="mb-4 opacity-50 flex justify-center">
+          <InboxIcon size={48} />
+        </div>
         <p className="text-text-secondary">No images match your filter</p>
       </div>
     );

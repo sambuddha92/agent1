@@ -104,7 +104,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onClose={handleMenuClose}
         userEmail={user?.email || ''}
         userName={user?.user_metadata?.full_name}
-        conversations={conversations}
+        conversations={conversations.map(conv => ({
+          id: conv.id,
+          title: conv.title || 'Untitled',
+          summary: conv.summary || undefined,
+          updated_at: conv.updated_at
+        }))}
         currentConversationId={currentConversationId}
         onNewChat={handleNewChat}
         onLoadConversation={handleLoadConversation}

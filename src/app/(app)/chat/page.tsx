@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { API_ENDPOINTS, UI_TEXT } from '@/lib/constants';
-import { Plus, SendHorizontal, X, Camera, Upload, Loader2 } from 'lucide-react';
+import { Plus, SendHorizontal, X, Camera, Upload, Loader2, Bot } from 'lucide-react';
 import { uploadImageClient } from '@/lib/supabase/image-client';
 import { createClient } from '@/lib/supabase/client';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
@@ -133,7 +133,7 @@ function ChatPageContent() {
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input || (uploadedImages.length > 0 ? `📸 Shared ${uploadedImages.length} image${uploadedImages.length > 1 ? 's' : ''}` : ''),
+      content: input || (uploadedImages.length > 0 ? `Shared ${uploadedImages.length} image${uploadedImages.length > 1 ? 's' : ''}` : ''),
       imageUrl: imageUrls[0], // For compatibility, keep first image
       imageUrls: imageUrls, // Store all image URLs
     };
@@ -148,7 +148,7 @@ function ChatPageContent() {
 
     try {
       const formData = new FormData();
-      formData.append('message', input || (uploadedImages.length > 0 ? `📸 Shared ${uploadedImages.length} image${uploadedImages.length > 1 ? 's' : ''}` : ''));
+      formData.append('message', input || (uploadedImages.length > 0 ? `Shared ${uploadedImages.length} image${uploadedImages.length > 1 ? 's' : ''}` : ''));
       // Append all images
       uploadedImages.forEach((item) => {
         formData.append(`images`, item.file);
@@ -290,7 +290,7 @@ function ChatPageContent() {
                     <div className="chat-bubble-metadata">
                       <div className="flex items-center gap-2 text-xs text-text-muted">
                         <span className="inline-flex items-center gap-1.5 bg-surface/50 px-2 py-1 rounded-md">
-                          <span className="text-primary font-semibold">🤖</span>
+                          <Bot size={14} className="text-primary" />
                           <span className="font-mono text-xs">{message.modelId}</span>
                         </span>
                         <span className="inline-flex items-center gap-1.5 bg-surface/50 px-2 py-1 rounded-md">

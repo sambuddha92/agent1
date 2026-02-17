@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ROUTES } from '@/lib/constants';
+import { MessageCircle, Sprout } from 'lucide-react';
 
 interface NavMenuProps {
   currentPath?: string;
@@ -9,13 +10,13 @@ export default function NavMenu({ currentPath }: NavMenuProps) {
   const navItems = [
     {
       href: ROUTES.CHAT,
-      icon: '💬',
+      icon: <MessageCircle size={24} />,
       label: 'Chat',
       description: 'AI companion',
     },
     {
       href: ROUTES.GARDEN,
-      icon: '🌱',
+      icon: <Sprout size={24} />,
       label: 'My Garden',
       description: 'Track plants',
     },
@@ -31,7 +32,7 @@ export default function NavMenu({ currentPath }: NavMenuProps) {
             currentPath === item.href ? 'bg-white/15' : ''
           }`}
         >
-          <span className="text-2xl group-hover:scale-110 transition-transform">
+          <span className="group-hover:scale-110 transition-transform text-white">
             {item.icon}
           </span>
           <div className="flex-1">

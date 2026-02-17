@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { ROUTES } from '@/lib/constants';
+import { MessageCircle, Lightbulb } from 'lucide-react';
 
 export default function EmptyState() {
   return (
@@ -28,13 +29,13 @@ export default function EmptyState() {
             href={ROUTES.CHAT}
             className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-primary to-primary/90 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-primary/30 transition-all duration-200 active-press"
           >
-            <span>💬</span>
+            <MessageCircle size={20} />
             Start Chatting
           </Link>
 
           {/* Help Text */}
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-lg text-sm text-primary font-light">
-            <span>💡</span>
+            <Lightbulb size={16} />
             <span>Upload photos in chat to see them here</span>
           </div>
         </div>

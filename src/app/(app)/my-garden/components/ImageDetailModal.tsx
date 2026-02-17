@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Image from 'next/image';
+import { X, Bot, Upload, Heart, Star, Download, Trash2 } from 'lucide-react';
 import type { Image as ImageType } from '@/types';
 
 interface ImageDetailModalProps {
@@ -74,7 +75,7 @@ export default function ImageDetailModal({
         title="Close"
         aria-label="Close modal"
       >
-        <span className="text-2xl">✕</span>
+        <X size={24} />
       </button>
 
       {/* Main Container */}
@@ -104,7 +105,7 @@ export default function ImageDetailModal({
                 </h2>
                 {isFavorite && (
                   <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-500 rounded-full text-xs font-bold text-white">
-                    ⭐
+                    <Star size={12} className="fill-current" />
                   </span>
                 )}
               </div>
@@ -129,8 +130,8 @@ export default function ImageDetailModal({
                   Type
                 </h3>
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg">
-                  <span>{image.type === 'generated' ? '🤖' : '📤'}</span>
-                  <span className="text-sm font-medium text-primary capitalize">
+                  {image.type === 'generated' ? <Bot size={14} /> : <Upload size={14} />}
+                  <span className="text-sm font-medium text-primary capitalize ml-1">
                     {image.type}
                   </span>
                 </div>
@@ -165,7 +166,7 @@ export default function ImageDetailModal({
                     : 'bg-surface-hover border border-primary/20 text-text-primary hover:border-primary/50'
                 }`}
               >
-                <span className="text-lg">{isFavorite ? '❤️' : '🤍'}</span>
+                <Heart size={20} className={isFavorite ? 'fill-current' : ''} />
                 <span>{isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}</span>
               </button>
 
@@ -173,7 +174,7 @@ export default function ImageDetailModal({
                 onClick={handleDownload}
                 className="w-full px-4 py-2.5 rounded-lg font-medium transition-all duration-200 bg-surface-hover border border-primary/20 text-text-primary hover:border-primary/50 flex items-center justify-center gap-2"
               >
-                <span className="text-lg">⬇️</span>
+                <Download size={20} />
                 <span>Download</span>
               </button>
 
@@ -184,7 +185,7 @@ export default function ImageDetailModal({
                 }}
                 className="w-full px-4 py-2.5 rounded-lg font-medium transition-all duration-200 bg-error/10 border border-error/30 text-error hover:bg-error/20 hover:border-error/50 flex items-center justify-center gap-2"
               >
-                <span className="text-lg">🗑️</span>
+                <Trash2 size={20} />
                 <span>Delete</span>
               </button>
             </div>

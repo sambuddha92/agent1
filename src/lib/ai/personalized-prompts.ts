@@ -463,11 +463,19 @@ export function extractInteractionInsights(
   confidence: number;
   reason: string;
 }> {
-  const insights = [];
+  const insights: Array<{
+    memoryType: string;
+    memoryKey: string;
+    memoryValue: string;
+    confidence: number;
+    reason: string;
+  }> = [];
 
   // Analyze user messages
   const userMessages = messages.filter(m => m.role === 'user');
-  if (userMessages.length === 0) return insights;
+  if (userMessages.length === 0) {
+    return insights;
+  }
 
   const latestUserMessage = userMessages[userMessages.length - 1].content;
   const conversationLength = messages.length;

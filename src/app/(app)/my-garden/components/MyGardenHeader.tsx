@@ -1,5 +1,7 @@
 'use client';
 
+import { Upload, Bot, Star } from 'lucide-react';
+
 interface MyGardenHeaderProps {
   totalImages: number;
   selectedFilter: 'all' | 'uploaded' | 'generated' | 'favorites';
@@ -15,9 +17,9 @@ export default function MyGardenHeader({
 }: MyGardenHeaderProps) {
   const filters = [
     { id: 'all', label: 'All Photos', count: totalImages },
-    { id: 'uploaded', label: 'Uploaded', icon: '📤' },
-    { id: 'generated', label: 'Generated', icon: '🤖' },
-    { id: 'favorites', label: 'Favorites', icon: '⭐', count: favoriteCount },
+    { id: 'uploaded', label: 'Uploaded', icon: <Upload size={16} /> },
+    { id: 'generated', label: 'Generated', icon: <Bot size={16} /> },
+    { id: 'favorites', label: 'Favorites', icon: <Star size={16} className="fill-current" />, count: favoriteCount },
   ];
 
   return (
@@ -49,7 +51,7 @@ export default function MyGardenHeader({
                 : 'bg-surface border border-primary/20 text-text-primary hover:bg-surface-hover hover:border-primary/40'
             }`}
           >
-            {filter.icon && <span>{filter.icon}</span>}
+            {filter.icon}
             <span>{filter.label}</span>
             {filter.count !== undefined && (
               <span className={`text-xs font-semibold ${selectedFilter === filter.id ? 'text-white/80' : 'text-text-muted'}`}>

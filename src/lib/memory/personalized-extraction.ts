@@ -30,11 +30,18 @@ export function extractInteractionInsights(
   memoryValue: string;
   confidence: number;
 }> {
-  const insights = [];
+  const insights: Array<{
+    memoryType: string;
+    memoryKey: string;
+    memoryValue: string;
+    confidence: number;
+  }> = [];
 
   // Analyze user messages
   const userMessages = messages.filter(m => m.role === 'user');
-  if (userMessages.length === 0) return insights;
+  if (userMessages.length === 0) {
+    return insights;
+  }
 
   const conversationLength = messages.length;
   const userMessagesText = userMessages.map(m => m.content).join(' ').toLowerCase();

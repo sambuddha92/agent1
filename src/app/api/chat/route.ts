@@ -146,10 +146,10 @@ export async function POST(request: Request) {
     // When image is present, include it in message content array so selectModel detects it
     const messageContent: string | MessageContent[] = hasImage
       ? [
-          { type: 'text', text: userMessage } as MessageContent,
+          { type: 'text', text: userMessage || '' } as MessageContent,
           { type: 'image', image: 'data:image/webp;base64,' } as MessageContent, // Indicator that image is present
         ]
-      : userMessage;
+      : userMessage || '';
 
     const selection = selectModel([
       { role: 'user' as const, content: messageContent, id: 'user-msg' }
@@ -196,7 +196,7 @@ export async function POST(request: Request) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       model: selection.model as any,
       system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
+      messages: [{ role: 'user', content: userMessage || '' }],
     });
 
     // Save assistant message in background after we get the full text

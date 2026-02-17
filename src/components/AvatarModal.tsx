@@ -101,11 +101,6 @@ export default function AvatarModal({ isOpen, userEmail, userName, onClose, onSi
             />
           </div>
 
-          {/* User name */}
-          <h2 className="text-xl font-semibold text-white text-center mb-2">
-            {userName || 'Your Garden Avatar'}
-          </h2>
-
           {/* Plant quote */}
           <p className="text-center text-white/80 text-sm mb-6 italic">
             &quot;{quote}&quot;
@@ -139,6 +134,11 @@ export default function AvatarModal({ isOpen, userEmail, userName, onClose, onSi
           <p className="text-center text-white/50 text-xs mt-4">
             {customSeed ? 'Your custom avatar is saved to this device.' : 'Click "New Avatar" to personalize yours!'}
           </p>
+
+          {/* User name */}
+          <h2 className="text-base font-bold text-white text-center mb-3">
+            {userName || 'Your Garden Avatar'}
+          </h2>
 
           {/* Sign Out Section */}
           <div className="mt-auto pt-6 border-t border-white/20">
