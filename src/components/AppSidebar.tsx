@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ROUTES, UI_TEXT } from '@/lib/constants';
 import UserProfile from './UserProfile';
+import { SidebarConversationListSkeleton, SidebarProfileSkeleton } from './Skeletons';
 import {
   Leaf,
   Plus,
@@ -30,6 +31,8 @@ interface AppSidebarProps {
   onNewChat?: () => void;
   onLoadConversation?: (id: string) => void;
   onDeleteConversation?: (id: string, e: React.MouseEvent) => void;
+  isLoadingUser?: boolean;
+  isLoadingConversations?: boolean;
 }
 
 export default function AppSidebar({
@@ -42,6 +45,8 @@ export default function AppSidebar({
   onNewChat,
   onLoadConversation,
   onDeleteConversation,
+  isLoadingUser = false,
+  isLoadingConversations = false,
 }: AppSidebarProps) {
   const pathname = usePathname();
   const [showSearch, setShowSearch] = useState(false);
@@ -177,46 +182,50 @@ export default function AppSidebar({
 
             {/* Conversation List */}
             <div className="space-y-1">
-              {filteredConversations.length === 0 ? (
-                <div className="px-4 py-8 text-center">
+              {isLoadingConversations ? (
+                <SidebarConversationListSkeleton count={4} />
+              ) : filteredConversations.length === 0 ? (
+                <div className="px-4 py-8 text-center animate-fade-in">
                   <MessageSquare className="icon-md text-white/20 mx-auto mb-2" />
                   <p className="text-xs text-white/40">
                     {searchQuery ? 'No matches' : 'No chats yet'}
                   </p>
                 </div>
               ) : (
-                filteredConversations.map((conversation) => (
-                  <button
-                    key={conversation.id}
-                    onClick={() => handleConversationClick(conversation.id)}
-                    className={`w-full flex items-start gap-2 px-3 py-2.5 rounded-md transition-all text-left group overflow-hidden ${
-                      conversation.id === currentConversationId
-                        ? 'bg-white/15 text-white'
-                        : 'text-white/70 hover:bg-white/10 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0 mt-0.5">
-                      <p className="text-xs font-medium truncate leading-snug">
-                        {conversation.title || 'Untitled'}
-                      </p>
-                      {conversation.summary && (
-                        <p className="text-xs text-white/50 mt-0.5 line-clamp-1">
-                          {conversation.summary}
+                <div className="animate-fade-in">
+                  {filteredConversations.map((conversation) => (
+                    <button
+                      key={conversation.id}
+                      onClick={() => handleConversationClick(conversation.id)}
+                      className={`w-full flex items-start gap-2 px-3 py-2.5 rounded-md transition-all text-left group overflow-hidden ${
+                        conversation.id === currentConversationId
+                          ? 'bg-white/15 text-white'
+                          : 'text-white/70 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0 mt-0.5">
+                        <p className="text-xs font-medium truncate leading-snug">
+                          {conversation.title || 'Untitled'}
                         </p>
+                        {conversation.summary && (
+                          <p className="text-xs text-white/50 mt-0.5 line-clamp-1">
+                            {conversation.summary}
+                          </p>
+                        )}
+                      </div>
+                      {onDeleteConversation && (
+                        <button
+                          onClick={(e) => onDeleteConversation(conversation.id, e)}
+                          className="flex-shrink-0 p-1.5 rounded hover:bg-red-500/20 text-white/30 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-all"
+                          aria-label="Delete conversation"
+                          title="Delete"
+                        >
+                          <Trash2 className="icon-xs" />
+                        </button>
                       )}
-                    </div>
-                    {onDeleteConversation && (
-                      <button
-                        onClick={(e) => onDeleteConversation(conversation.id, e)}
-                        className="flex-shrink-0 p-1.5 rounded hover:bg-red-500/20 text-white/30 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-all"
-                        aria-label="Delete conversation"
-                        title="Delete"
-                      >
-                        <Trash2 className="icon-xs" />
-                      </button>
-                    )}
-                  </button>
-                ))
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -224,9 +233,13 @@ export default function AppSidebar({
 
         {/* User Profile - Fixed at Bottom */}
         <div className="sidebar-footer">
-          {userEmail && (
-            <UserProfile userEmail={userEmail} userName={userName} />
-          )}
+          {isLoadingUser ? (
+            <SidebarProfileSkeleton />
+          ) : userEmail ? (
+            <div className="animate-fade-in">
+              <UserProfile userEmail={userEmail} userName={userName} />
+            </div>
+          ) : null}
         </div>
       </aside>
     </>

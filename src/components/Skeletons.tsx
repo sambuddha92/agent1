@@ -91,6 +91,29 @@ export function ConversationListSkeleton({ count = 5 }: { count?: number }) {
 }
 
 /**
+ * Sidebar Conversation list skeleton - for dark sidebar background
+ */
+export function SidebarConversationListSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="space-y-1 px-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <div 
+          key={i} 
+          className="px-3 py-2.5 rounded-md animate-pulse"
+          style={{ 
+            animationDelay: `${i * 100}ms`,
+            animationDuration: '1.5s'
+          }}
+        >
+          <div className="h-3 bg-white/15 rounded w-4/5 mb-2"></div>
+          <div className="h-2.5 bg-white/10 rounded w-3/5"></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Profile/User info skeleton
  */
 export function ProfileSkeleton() {
@@ -100,6 +123,21 @@ export function ProfileSkeleton() {
       <div className="flex-1">
         <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
         <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Sidebar Profile skeleton - for dark sidebar background
+ */
+export function SidebarProfileSkeleton() {
+  return (
+    <div className="animate-pulse flex items-center gap-3 px-4 py-3">
+      <div className="w-10 h-10 rounded-full bg-white/15 flex-shrink-0"></div>
+      <div className="flex-1 min-w-0">
+        <div className="h-3.5 bg-white/15 rounded w-2/3 mb-2"></div>
+        <div className="h-3 bg-white/10 rounded w-4/5"></div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/actions';
 import { API_ENDPOINTS } from '@/lib/constants';
@@ -15,31 +15,40 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
 
-  useEffect(() => {
-    async function loadUser() {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
+  // Load conversations function (memoized for reuse)
+  const loadConversations = useCallback(async () => {
+    try {
+      const response = await fetch(API_ENDPOINTS.CONVERSATIONS);
+      if (response.ok) {
+        const data = await response.json();
+        setConversations(data);
+      }
+    } catch (error) {
+      console.error('[layout] Failed to load conversations:', error);
+    } finally {
+      setIsLoadingConversations(false);
     }
-    loadUser();
   }, []);
 
-  // Load conversations
+  // Load user and conversations in parallel on mount
   useEffect(() => {
-    async function loadConversations() {
-      try {
-        const response = await fetch(API_ENDPOINTS.CONVERSATIONS);
-        if (response.ok) {
-          const data = await response.json();
-          setConversations(data);
-        }
-      } catch (error) {
-        console.error('[layout] Failed to load conversations:', error);
-      }
+    async function loadInitialData() {
+      // Fetch user and conversations in parallel for faster loading
+      const [currentUser] = await Promise.all([
+        getCurrentUser(),
+        loadConversations()
+      ]);
+      setUser(currentUser);
+      setIsLoadingUser(false);
     }
-    loadConversations();
+    loadInitialData();
+  }, [loadConversations]);
 
-    // Listen for conversation updates from chat page
+  // Listen for conversation updates from chat page
+  useEffect(() => {
     const handleConversationCreated = () => {
       loadConversations();
     };
@@ -49,7 +58,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener('conversationCreated', handleConversationCreated);
     };
-  }, []);
+  }, [loadConversations]);
 
   const handleMenuToggle = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -114,6 +123,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onNewChat={handleNewChat}
         onLoadConversation={handleLoadConversation}
         onDeleteConversation={handleDeleteConversation}
+        isLoadingUser={isLoadingUser}
+        isLoadingConversations={isLoadingConversations}
       />
 
       {/* Main Content */}
