@@ -28,7 +28,7 @@
 
 ## 1. Executive Summary
 
-**FloatGreens** is an AI-powered spatial botanist that builds and maintains a living model of users' growing spaces—primarily urban balconies. Unlike generic plant care apps, FloatGreens remembers your specific setup: orientation, light patterns, microclimate, plant inventory, and past failures. It acts proactively (weather alerts, early disease detection) rather than reactively.
+**FloatGreens** is an AI-powered spatial botanist that builds and maintains a living model of users' growing spaces - primarily urban balconies. Unlike generic plant care apps, FloatGreens remembers your specific setup: orientation, light patterns, microclimate, plant inventory, and past failures. It acts proactively (weather alerts, early disease detection) rather than reactively.
 
 **MVP Status:** Live and functional. Core chat interface, image analysis, memory system, and gallery operational.
 

@@ -57,7 +57,24 @@ function shouldSuppress(line) {
 
 const ip = getLocalIP();
 
-console.log(`🌿 Floatgreens running at http://${ip}:${PORT}`);
+const localUrl = `http://localhost:${PORT}`;
+const networkUrl = `http://${ip}:${PORT}`;
+const maxUrlLen = Math.max(localUrl.length, networkUrl.length);
+const boxWidth = maxUrlLen + 16; // padding for "│   Local:    " and "   │"
+
+const line = '─'.repeat(boxWidth);
+const empty = ' '.repeat(boxWidth);
+
+console.log('');
+console.log(`╭${line}╮`);
+console.log(`│${empty}│`);
+console.log(`│   🌿 Floatgreens Dev Server${' '.repeat(boxWidth - 28)}│`);
+console.log(`│${empty}│`);
+console.log(`│   Local:    ${localUrl.padEnd(maxUrlLen)}   │`);
+console.log(`│   Network:  ${networkUrl.padEnd(maxUrlLen)}   │`);
+console.log(`│${empty}│`);
+console.log(`╰${line}╯`);
+console.log('');
 
 const next = spawn(
   'node',

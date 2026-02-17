@@ -265,6 +265,28 @@ export interface Image {
 
 export type ImageType = 'uploaded' | 'generated';
 
+// ============================================
+// Wisdom Types
+// ============================================
+
+export type WisdomCategory = 
+  | 'plant_care'          // General plant care patterns
+  | 'balcony_gardening'   // Balcony-specific insights
+  | 'seasonal_patterns'   // Time-based patterns
+  | 'common_mistakes'     // Frequent user errors
+  | 'success_patterns'    // What leads to thriving gardens
+  | 'interaction'         // Communication patterns
+  | 'regional';           // Location-specific learnings
+
+export interface Wisdom {
+  category: WisdomCategory;
+  key: string;                    // Unique identifier
+  statement: string;              // The universal truth
+  confidence: number;             // 0.0-1.0, only ≥0.8 used in prompts
+  sourceNote?: string;            // How this was learned (for documentation)
+  tags?: string[];                // For filtering (e.g., ['beginner', 'herbs'])
+}
+
 export interface GenerateImageResult {
   imageUrl: string;
   seed: number;

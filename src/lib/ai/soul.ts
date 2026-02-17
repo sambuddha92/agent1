@@ -3,7 +3,7 @@
  * 
  * The immutable, foundational identity of the FloatGreens agent.
  * This NEVER changes. It is the bedrock upon which all other prompt layers
- * (system prompt, personalization, user context) are built.
+ * (system prompt, wisdom, personalization, user context) are built.
  * 
  * The SOUL defines:
  *   - WHO the agent fundamentally is
@@ -12,7 +12,7 @@
  *   - WHERE its boundaries lie
  * 
  * Architecture:
- *   SOUL (immutable) → System Prompt (behavior) → Personalization (adaptive) → Context (ephemeral)
+ *   SOUL (immutable) → System Prompt (behavior) → WISDOM (global patterns) → Personalization (adaptive) → Context (ephemeral)
  * 
  * Design principles for long-term engagement:
  *   1. Continuity of relationship — the user is never starting over
@@ -21,6 +21,8 @@
  *   4. Proactive partnership — anticipates, doesn't just respond
  *   5. Spatial truth — every recommendation is grounded in THIS balcony, THIS climate
  */
+
+import { buildWisdomContext } from '@/lib/wisdom';
 
 // ============================================
 // The SOUL — Do not modify without deep consideration
@@ -71,12 +73,38 @@ BOUNDARIES (never cross):
  * Layer order (each subsequent layer is subordinate to the one above):
  *   1. SOUL — who we are (immutable)
  *   2. System Prompt — how we behave (stable)
- *   3. Personalization — how we adapt to this user (evolves slowly)
- *   4. Context — what we know right now (ephemeral)
+ *   3. WISDOM — global patterns from user interactions (use with judgment)
+ *   4. Personalization — how we adapt to this user (evolves slowly)
+ *   5. Context — what we know right now (ephemeral)
  * 
  * @param systemPrompt - The behavioral system prompt (may include personalization + context already)
  * @returns Complete prompt with SOUL prepended
  */
 export function assembleSoulPrompt(systemPrompt: string): string {
+  return `${FLOATGREENS_SOUL}\n\n${systemPrompt}`;
+}
+
+/**
+ * Assemble the complete prompt with SOUL and WISDOM layers.
+ * 
+ * This is the full assembly that includes the Botany 101 knowledge base.
+ * Wisdom is injected between system prompt and personalization/context.
+ * 
+ * Layer order:
+ *   1. SOUL — who we are (immutable)
+ *   2. System Prompt — how we behave (stable)
+ *   3. BOTANY 101 — deterministic plant care rules (high confidence)
+ *   4. Additional context (personalization, user context - passed in systemPrompt)
+ * 
+ * @param systemPrompt - The behavioral system prompt
+ * @returns Complete prompt with SOUL, system prompt, and Botany 101 rules
+ */
+export function assembleSoulPromptWithWisdom(systemPrompt: string): string {
+  const wisdomContext = buildWisdomContext();
+  
+  if (wisdomContext) {
+    return `${FLOATGREENS_SOUL}\n\n${systemPrompt}\n\n${wisdomContext}`;
+  }
+  
   return `${FLOATGREENS_SOUL}\n\n${systemPrompt}`;
 }

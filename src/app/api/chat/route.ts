@@ -4,6 +4,7 @@ import { selectModel } from '@/lib/ai/model-router';
 import { uploadImage } from '@/lib/supabase/image-storage';
 import { createConversation, saveMessage, generateTitle } from '@/lib/conversations';
 import { FLOATGREENS_SYSTEM_PROMPT } from '@/lib/ai/prompts';
+import { assembleSoulPromptWithWisdom } from '@/lib/ai/soul';
 import { chatRequestSchema, validateAndFormat } from '@/lib/validation';
 import { chatRateLimiter } from '@/lib/rate-limit';
 import { streamText } from 'ai';
@@ -186,11 +187,15 @@ export async function POST(request: Request) {
     }
 
     // Generate streaming response with image context
-    // Use single source of truth from prompts.ts
+    // Build system prompt with SOUL + base prompt + WISDOM layers
     const imageContextNote = hasImage 
       ? '\n\nThe user has shared an image with you. Always acknowledge that you\'ve received and analyzed the image.'
       : '';
-    const systemPrompt = FLOATGREENS_SYSTEM_PROMPT + imageContextNote;
+    const basePrompt = FLOATGREENS_SYSTEM_PROMPT + imageContextNote;
+    
+    // Assemble full prompt with Soul and Wisdom
+    // Context tags can be derived from message content for smarter wisdom selection
+    const systemPrompt = assembleSoulPromptWithWisdom(basePrompt);
 
     const result = streamText({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
