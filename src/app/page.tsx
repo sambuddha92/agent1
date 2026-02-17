@@ -1,101 +1,144 @@
-import Image from "next/image";
+import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="min-h-screen gradient-nature">
+      {/* Decorative background elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-[0.06]">
+        <div className="absolute top-20 right-10 md:right-20 text-6xl md:text-9xl animate-float">🌿</div>
+        <div className="absolute bottom-32 left-8 md:left-16 text-5xl md:text-8xl animate-float" style={{animationDelay: '2s'}}>🌸</div>
+        <div className="absolute top-1/2 right-1/4 md:right-1/3 text-4xl md:text-7xl animate-float" style={{animationDelay: '4s'}}>🍃</div>
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="container mx-auto px-6 sm:px-8 py-16 sm:py-20 md:py-24 relative z-10">
+        <div className="max-w-7xl mx-auto">
+          {/* Hero Section */}
+          <div className="mb-20 sm:mb-24 md:mb-32 text-center">
+            <div className="inline-block text-6xl sm:text-7xl mb-8 animate-float">🌿</div>
+            <h1 className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-primary mb-6 sm:mb-8 tracking-tight">
+              FloatGreens
+            </h1>
+            <p className="text-lg sm:text-xl md:text-2xl text-text-primary max-w-3xl mx-auto leading-relaxed font-semibold">
+              AI botanist for your balcony. Learns your space, acts proactively, keeps plants thriving.
+            </p>
+          </div>
+          
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center mb-24 sm:mb-28 md:mb-32 max-w-md mx-auto">
+            <Link href="/signup" className="btn-primary text-center">
+              Start Growing Smarter
+            </Link>
+            <Link href="/login" className="btn-secondary text-center">
+              Sign In
+            </Link>
+          </div>
+
+          {/* Core Value Props - 3 Powerful USPs */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-10 mb-20 sm:mb-24 md:mb-28">
+            <div className="card-interactive group">
+              <div className="text-5xl sm:text-6xl mb-6 group-hover:scale-110 transition-transform">🧠</div>
+              <h3 className="font-display text-2xl sm:text-3xl font-semibold mb-4 text-primary">Remembers Your Space</h3>
+              <p className="text-text-primary leading-relaxed">
+                Builds a model of your microclimate—sun hours, wind, containers, soil. Advice calibrated to your exact conditions.
+              </p>
+            </div>
+            
+            <div className="card-interactive group">
+              <div className="text-5xl sm:text-6xl mb-6 group-hover:scale-110 transition-transform">⚡</div>
+              <h3 className="font-display text-2xl sm:text-3xl font-semibold mb-4 text-primary">Acts Proactively</h3>
+              <p className="text-text-primary leading-relaxed">
+                Adjusts watering before heatwaves. Diagnoses issues early. Watches weather and intervenes autonomously.
+              </p>
+            </div>
+            
+            <div className="card-interactive group">
+              <div className="text-5xl sm:text-6xl mb-6 group-hover:scale-110 transition-transform">🌍</div>
+              <h3 className="font-display text-2xl sm:text-3xl font-semibold mb-4 text-primary">Local Intelligence</h3>
+              <p className="text-text-primary leading-relaxed">
+                See what thrives in your area. Hyperlocal growth data from your neighborhood&apos;s balconies.
+              </p>
+            </div>
+          </div>
+
+          {/* How It Works - Concrete Examples */}
+          <div className="mb-20 sm:mb-24 md:mb-28">
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-primary text-center mb-12 sm:mb-16">
+              How It Works
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-10">
+              <div className="card group hover:shadow-xl transition-all">
+                <div className="flex items-start gap-4 sm:gap-5">
+                  <div className="text-4xl sm:text-5xl flex-shrink-0 group-hover:scale-110 transition-transform">📸</div>
+                  <div>
+                    <h4 className="font-display text-xl sm:text-2xl font-semibold mb-3 text-primary">Visualize & Plan</h4>
+                    <p className="text-text-primary leading-relaxed">
+                      Upload a photo. Get dream renders with plants suited to your light and climate, plus a shopping list.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="card group hover:shadow-xl transition-all">
+                <div className="flex items-start gap-4 sm:gap-5">
+                  <div className="text-4xl sm:text-5xl flex-shrink-0 group-hover:scale-110 transition-transform">🔬</div>
+                  <div>
+                    <h4 className="font-display text-xl sm:text-2xl font-semibold mb-3 text-primary">Instant Diagnosis</h4>
+                    <p className="text-text-primary leading-relaxed">
+                      Snap a photo. Get issue identification and treatment recommendations in 60 seconds.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card group hover:shadow-xl transition-all">
+                <div className="flex items-start gap-4 sm:gap-5">
+                  <div className="text-4xl sm:text-5xl flex-shrink-0 group-hover:scale-110 transition-transform">✈️</div>
+                  <div>
+                    <h4 className="font-display text-xl sm:text-2xl font-semibold mb-3 text-primary">Travel Mode</h4>
+                    <p className="text-text-primary leading-relaxed">
+                      Pre-trip checklist and weather monitoring while you&apos;re away. Return to healthy plants.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="card group hover:shadow-xl transition-all">
+                <div className="flex items-start gap-4 sm:gap-5">
+                  <div className="text-4xl sm:text-5xl flex-shrink-0 group-hover:scale-110 transition-transform">🌱</div>
+                  <div>
+                    <h4 className="font-display text-xl sm:text-2xl font-semibold mb-3 text-primary">Local Network</h4>
+                    <p className="text-text-primary leading-relaxed">
+                      Find nearby growers. Swap cuttings and seeds with compatible neighbors.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          {/* Footer CTA */}
+          <div className="p-10 sm:p-12 md:p-16 gradient-forest rounded-2xl text-white shadow-xl">
+            <div className="text-center max-w-3xl mx-auto">
+              <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-5 sm:mb-6">
+                Start Growing Smarter
+              </h2>
+              <p className="text-base sm:text-lg md:text-xl mb-8 sm:mb-10 text-white/90">
+                3 photos. 2 questions. Your AI garden assistant starts today.
+              </p>
+              <Link
+                href="/signup"
+                className="inline-flex items-center justify-center px-10 sm:px-12 py-4 sm:py-5 bg-white text-primary rounded-lg font-bold text-base sm:text-lg hover:bg-white/95 hover:scale-105 active:scale-100 transition-all shadow-xl hover:shadow-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30 uppercase tracking-wide"
+              >
+                Get Started Free
+              </Link>
+              <p className="text-sm text-white/70 mt-6">
+                No credit card • 4-minute setup
+              </p>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
   );
 }
