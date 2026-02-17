@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { API_ENDPOINTS, UI_TEXT } from '@/lib/constants';
-import { Flower2, Droplets, CloudSun, X } from 'lucide-react';
-import ImageUploadButton from '@/components/ImageUploadButton';
+import { Plus, SendHorizontal, X, Camera, Upload, Loader2 } from 'lucide-react';
+import { uploadImageClient } from '@/lib/supabase/image-client';
 import { createClient } from '@/lib/supabase/client';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
 
@@ -19,10 +20,15 @@ function ChatPageContent() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [uploadedImage, setUploadedImage] = useState<ImageType | null>(null);
-  const [uploadedImageFile, setUploadedImageFile] = useState<File | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<Array<{ image: ImageType; file: File }>>([]);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const plusMenuRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -32,7 +38,7 @@ function ChatPageContent() {
   const handleTextareaInput = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      const newHeight = Math.min(textareaRef.current.scrollHeight, 240); // max 10 lines ~240px
+      const newHeight = Math.min(textareaRef.current.scrollHeight, 200);
       textareaRef.current.style.height = `${newHeight}px`;
     }
   };
@@ -47,12 +53,24 @@ function ChatPageContent() {
     fetchUser();
   }, []);
 
+  // Close plus menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (plusMenuRef.current && !plusMenuRef.current.contains(e.target as Node)) {
+        setShowPlusMenu(false);
+      }
+    };
+    if (showPlusMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showPlusMenu]);
+
   const loadConversation = useCallback(async (conversationId: string) => {
     try {
       const response = await fetch(`${API_ENDPOINTS.CONVERSATIONS}/${conversationId}`);
       if (response.ok) {
         const chatMessages: ChatMessage[] = await response.json();
-        
         const displayMessages: Message[] = chatMessages.map((msg) => ({
           id: msg.id,
           role: msg.role,
@@ -61,7 +79,6 @@ function ChatPageContent() {
           tier: msg.tier as Message['tier'],
           imageUrl: msg.image_url || undefined,
         }));
-        
         setMessages(displayMessages);
         setCurrentConversationId(conversationId);
       }
@@ -78,28 +95,52 @@ function ChatPageContent() {
     if (conversationIdFromUrl && conversationIdFromUrl !== currentConversationId) {
       loadConversation(conversationIdFromUrl);
     } else if (!conversationIdFromUrl && currentConversationId) {
-      // New chat started
       setMessages([]);
       setCurrentConversationId(null);
       setInput('');
     }
   }, [conversationIdFromUrl, currentConversationId, loadConversation]);
 
+  // Handle file upload
+  const handleFileUpload = async (file: File) => {
+    if (!file || !user) return;
+    try {
+      setUploadError(null);
+      setIsUploading(true);
+      setShowPlusMenu(false);
+      const image = await uploadImageClient(file, 'uploaded', user.id, file.name);
+      setUploadedImages((prev) => [...prev, { image, file }]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      setUploadError(message);
+      setTimeout(() => setUploadError(null), 3000);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const removeUploadedImage = (index: number) => {
+    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!input.trim() && !uploadedImage) || isLoading) return;
+    if ((!input.trim() && uploadedImages.length === 0) || isLoading) return;
+
+    // Collect all image URLs for display
+    const imageUrls = uploadedImages.map((item) => item.image.url);
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input || (uploadedImage ? '📸 Shared an image' : ''),
-      imageUrl: uploadedImage?.url,
+      content: input || (uploadedImages.length > 0 ? `📸 Shared ${uploadedImages.length} image${uploadedImages.length > 1 ? 's' : ''}` : ''),
+      imageUrl: imageUrls[0], // For compatibility, keep first image
+      imageUrls: imageUrls, // Store all image URLs
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
-    setUploadedImage(null);
-    setUploadedImageFile(null);
+    setUploadedImages([]);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -107,10 +148,11 @@ function ChatPageContent() {
 
     try {
       const formData = new FormData();
-      formData.append('message', input || (uploadedImage ? '📸 Shared an image' : ''));
-      if (uploadedImageFile) {
-        formData.append('image', uploadedImageFile);
-      }
+      formData.append('message', input || (uploadedImages.length > 0 ? `📸 Shared ${uploadedImages.length} image${uploadedImages.length > 1 ? 's' : ''}` : ''));
+      // Append all images
+      uploadedImages.forEach((item) => {
+        formData.append(`images`, item.file);
+      });
       if (currentConversationId) {
         formData.append('conversationId', currentConversationId);
       }
@@ -128,8 +170,6 @@ function ChatPageContent() {
       if (newConversationId && newConversationId !== currentConversationId) {
         setCurrentConversationId(newConversationId);
         window.history.replaceState(null, '', `/chat?id=${newConversationId}`);
-        
-        // Trigger layout to reload conversations
         window.dispatchEvent(new CustomEvent('conversationCreated'));
       }
 
@@ -137,7 +177,6 @@ function ChatPageContent() {
       const decoder = new TextDecoder();
       let assistantMessage = '';
       const assistantMessageId = (Date.now() + 1).toString();
-
       const modelId = response.headers.get('X-Model-Id');
       const modelTier = response.headers.get('X-Model-Tier') as Message['tier'];
 
@@ -156,13 +195,10 @@ function ChatPageContent() {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-
           const chunk = decoder.decode(value, { stream: true });
           const lines = chunk.split('\n');
-          
           for (const line of lines) {
             if (!line.trim()) continue;
-            
             if (line.startsWith('data: ')) {
               const data = line.substring(6);
               if (data === '[DONE]') continue;
@@ -173,7 +209,6 @@ function ChatPageContent() {
             } else {
               assistantMessage += line;
             }
-            
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantMessageId
@@ -199,56 +234,27 @@ function ChatPageContent() {
     }
   };
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
     <div className="flex flex-col h-full w-full bg-gradient-to-br from-surface via-background to-surface">
-      {/* Messages Container */}
+      {/* Messages Area */}
       <div className="chat-messages flex-1 overflow-y-auto">
+        {/* Empty State — ChatGPT Style: Just the greeting, no cards */}
         {messages.length === 0 && (
-          <div className="chat-empty-state max-w-2xl mx-auto animate-fade-in">
-            <div className="text-7xl sm:text-8xl mb-8 sm:mb-10 animate-float">🌱</div>
-            <h2 className="font-display text-3xl sm:text-5xl font-semibold text-primary mb-4 sm:mb-6 leading-tight">
-              Welcome to your garden
+          <div className="flex flex-col justify-center items-center h-full px-6 animate-fade-in">
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-primary mb-3 text-center leading-tight">
+              What can I help with?
             </h2>
-            <p className="text-base sm:text-lg text-text-secondary mb-8 sm:mb-12 max-w-lg mx-auto leading-relaxed font-light">
-              Ask questions about plant care, get personalized growing advice, and discover what thrives in your unique space.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto mb-8">
-              <button
-                onClick={() => setInput("What should I plant this season?")}
-                className="chat-suggestion-btn group"
-              >
-                <div className="mb-3 sm:mb-4 group-hover:scale-110 group-focus:scale-110 transition-transform duration-300">
-                  <Flower2 className="icon-3xl icon-primary mx-auto" />
-                </div>
-                <p className="text-xs sm:text-sm font-medium text-primary">What should I plant?</p>
-              </button>
-              <button
-                onClick={() => setInput("How do I care for my plants?")}
-                className="chat-suggestion-btn group"
-              >
-                <div className="mb-3 sm:mb-4 group-hover:scale-110 group-focus:scale-110 transition-transform duration-300">
-                  <Droplets className="icon-3xl icon-primary mx-auto" />
-                </div>
-                <p className="text-xs sm:text-sm font-medium text-primary">Plant care tips</p>
-              </button>
-              <button
-                onClick={() => setInput("What's the weather forecast?")}
-                className="chat-suggestion-btn group"
-              >
-                <div className="mb-3 sm:mb-4 group-hover:scale-110 group-focus:scale-110 transition-transform duration-300">
-                  <CloudSun className="icon-3xl icon-primary mx-auto" />
-                </div>
-                <p className="text-xs sm:text-sm font-medium text-primary">Weather forecast</p>
-              </button>
-            </div>
-            <p className="text-xs text-text-muted font-light">
-              💡 Tip: Share a photo of your space to get personalized recommendations
+            <p className="text-sm sm:text-base text-text-muted text-center max-w-md font-light mb-0">
+              Ask about plant care, share a photo, or get garden design advice.
             </p>
           </div>
         )}
-        
+
+        {/* Messages */}
         {messages.length > 0 && (
-          <div className="chat-content">
+          <div className="chat-content max-w-4xl mx-auto">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -261,21 +267,25 @@ function ChatPageContent() {
                       : 'chat-bubble-assistant'
                   }`}
                 >
-                  {/* Image Display */}
-                  {message.imageUrl && message.role === 'user' && (
-                    <div className="mb-3 rounded-lg overflow-hidden bg-black/10">
-                      <img
-                        src={message.imageUrl}
-                        alt="Shared image"
-                        className="max-w-xs h-auto object-cover max-h-64"
-                      />
-                    </div>
+                  {message.role === 'user' && (
+                    <>
+                      {/* Display all uploaded images */}
+                      {(message.imageUrls && message.imageUrls.length > 0 ? message.imageUrls : (message.imageUrl ? [message.imageUrl] : [])).map((url, _idx) => (
+                        <div key={_idx} className="mb-3 rounded-lg overflow-hidden bg-black/10 relative w-fit">
+                          <Image
+                            src={url}
+                            alt={`Shared image ${_idx + 1}`}
+                            width={400}
+                            height={256}
+                            className="max-w-xs h-auto object-cover max-h-64"
+                          />
+                        </div>
+                      ))}
+                    </>
                   )}
-                  
                   <p className="chat-bubble-text">
                     {typeof message.content === 'string' ? message.content : JSON.stringify(message.content)}
                   </p>
-                  
                   {message.role === 'assistant' && message.modelId && message.tier && (
                     <div className="chat-bubble-metadata">
                       <div className="flex items-center gap-2 text-xs text-text-muted">
@@ -295,105 +305,214 @@ function ChatPageContent() {
             ))}
           </div>
         )}
-        
+
+        {/* Loading indicator */}
         {isLoading && (
-          <div className="chat-message-row justify-start animate-fade-in">
+          <div className="chat-message-row justify-start animate-fade-in max-w-4xl mx-auto">
             <div className="chat-bubble chat-bubble-assistant">
               <div className="flex space-x-2">
-                <div className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce"></div>
-                <div className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                <div className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
               </div>
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - Fixed at Bottom */}
-      <div className="chat-footer bg-surface/60 backdrop-glass border-t border-border/50">
+      {/* Upload Error Toast */}
+      {uploadError && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-error/90 text-white px-4 py-2 rounded-lg text-sm z-50 animate-slide-up">
+          {uploadError}
+        </div>
+      )}
+
+      {/* ===== COMMAND CENTER INPUT (ChatGPT Pill Style) ===== */}
+      <div className="chat-footer">
         <form onSubmit={handleSubmit}>
-          <div className="chat-input-container max-w-4xl mx-auto">
-            {/* Image Preview Chip */}
-            {uploadedImage && (
-              <div className="mb-3 flex items-center gap-3 p-3 bg-surface rounded-lg border border-primary/20 animate-scale-in">
-                <div className="relative w-10 h-10 rounded overflow-hidden bg-black/5 flex-shrink-0">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-lg">🖼️</span>
-                  </div>
+          {/* Image Preview — Inside the pill, horizontally scrollable */}
+          {uploadedImages.length > 0 && (
+            <div className="command-pill-images-container animate-scale-in">
+              {uploadedImages.map((item, index) => (
+                <div key={index} className="command-pill-image-item">
+                  <Image
+                    src={item.image.url}
+                    alt={`Uploaded image ${index + 1}`}
+                    width={80}
+                    height={80}
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeUploadedImage(index)}
+                    className="command-pill-image-remove"
+                    aria-label={`Remove image ${index + 1}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
                 </div>
-                <span className="text-xs text-text-secondary flex-1 truncate">{uploadedImage.description || 'Image attached'}</span>
+              ))}
+            </div>
+          )}
+
+          {/* Uploading indicator */}
+          {isUploading && (
+            <div className="command-pill-preview animate-scale-in">
+              <Loader2 className="w-5 h-5 text-primary animate-spin flex-shrink-0" />
+              <span className="text-xs text-text-secondary">Uploading image...</span>
+            </div>
+          )}
+
+          {/* The Pill */}
+          <div className="command-pill" ref={plusMenuRef}>
+            {/* + Button */}
+            <button
+              type="button"
+              onClick={() => setShowPlusMenu(!showPlusMenu)}
+              disabled={isLoading || isUploading}
+              className="command-pill-plus"
+              aria-label="Add files and more"
+              title="Add files and more"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+
+            {/* Plus Menu — Desktop Popover */}
+            {showPlusMenu && !isMobile && (
+              <div className="plus-menu-popover animate-scale-in">
                 <button
                   type="button"
-                  onClick={() => {
-                    setUploadedImage(null);
-                    setUploadedImageFile(null);
-                  }}
-                  className="flex-shrink-0 text-text-secondary hover:text-primary transition-colors"
-                  aria-label="Remove image"
+                  className="plus-menu-item"
+                  onClick={() => { cameraInputRef.current?.click(); }}
                 >
-                  <X className="w-4 h-4" />
+                  <div className="plus-menu-item-icon">
+                    <Camera className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">Camera</div>
+                    <div className="text-xs text-text-muted">Take a photo</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="plus-menu-item"
+                  onClick={() => { fileInputRef.current?.click(); }}
+                >
+                  <div className="plus-menu-item-icon">
+                    <Upload className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">Upload Photo</div>
+                    <div className="text-xs text-text-muted">Choose from files</div>
+                  </div>
                 </button>
               </div>
             )}
 
-            {/* Input Controls Row */}
-            <div className="flex gap-3 items-end">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => {
-                  setInput(e.target.value);
-                  handleTextareaInput();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit(e);
-                  }
-                }}
-                placeholder="Ask about your plants, share a photo, or get advice..."
-                className="chat-input"
-                disabled={isLoading}
-                autoComplete="off"
-                rows={1}
-              />
-              
-              {user && (
-                <ImageUploadButton
-                  userId={user.id}
-                  onImageUploaded={(image, file) => {
-                    setUploadedImage(image);
-                    setUploadedImageFile(file);
-                  }}
-                  disabled={isLoading}
-                />
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                handleTextareaInput();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+              placeholder="Ask anything"
+              className="command-pill-input"
+              disabled={isLoading}
+              autoComplete="off"
+              rows={1}
+            />
+
+            {/* Send Button */}
+            <button
+              type="submit"
+              disabled={isLoading || (!input.trim() && uploadedImages.length === 0)}
+              className="command-pill-send"
+              aria-label="Send message"
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <SendHorizontal className="w-5 h-5" />
               )}
-              
-              <button
-                type="submit"
-                disabled={isLoading || (!input.trim() && !uploadedImage)}
-                className="chat-send-btn"
-                aria-label="Send message"
-              >
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    <span className="hidden sm:inline">{UI_TEXT.SENDING}</span>
-                  </span>
-                ) : (
-                  <span>Send</span>
-                )}
-              </button>
-            </div>
+            </button>
           </div>
-          
+
+          {/* Hidden file inputs */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileUpload(file);
+              e.target.value = '';
+            }}
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileUpload(file);
+              e.target.value = '';
+            }}
+          />
+
           <p className="text-xs text-text-muted text-center font-light mt-3">
-            Powered by AI • Upload photos for instant identification
+            Powered by AI · Upload photos for instant identification
           </p>
         </form>
       </div>
+
+      {/* Mobile Bottom Sheet for + menu */}
+      {showPlusMenu && isMobile && (
+        <>
+          <div className="bottom-sheet-backdrop" onClick={() => setShowPlusMenu(false)} />
+          <div className="bottom-sheet">
+            <div className="bottom-sheet-handle" />
+            <button
+              type="button"
+              className="bottom-sheet-item"
+              onClick={() => { cameraInputRef.current?.click(); setShowPlusMenu(false); }}
+            >
+              <div className="bottom-sheet-item-icon">
+                <Camera className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-medium">Camera</div>
+                <div className="text-sm text-text-muted font-light">Take a photo of your plant</div>
+              </div>
+            </button>
+            <button
+              type="button"
+              className="bottom-sheet-item"
+              onClick={() => { fileInputRef.current?.click(); setShowPlusMenu(false); }}
+            >
+              <div className="bottom-sheet-item-icon">
+                <Upload className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-medium">Upload Photo</div>
+                <div className="text-sm text-text-muted font-light">Choose from your gallery</div>
+              </div>
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

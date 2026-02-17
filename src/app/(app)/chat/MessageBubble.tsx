@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import Image from 'next/image';
 import type { Message } from '@/types';
 
 interface MessageBubbleProps {
@@ -26,10 +27,12 @@ export const MessageBubble = memo(function MessageBubble({ message }: MessageBub
       >
         {/* Image Display */}
         {message.imageUrl && message.role === 'user' && (
-          <div className="mb-3 rounded-lg overflow-hidden bg-black/10">
-            <img
+          <div className="mb-3 rounded-lg overflow-hidden bg-black/10 relative w-fit">
+            <Image
               src={message.imageUrl}
               alt="Shared image"
+              width={400}
+              height={256}
               className="max-w-xs h-auto object-cover max-h-64"
               loading="lazy"
             />

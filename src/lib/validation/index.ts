@@ -61,12 +61,6 @@ export const imageFileSchema = z.object({
 const MAX_MESSAGE_LENGTH = 10000;
 
 /**
- * Minimum message length after trim: 1 character
- * Prevents empty messages (combined with image requirement)
- */
-const MIN_MESSAGE_LENGTH = 1;
-
-/**
  * Chat request validation schema
  * Validates FormData from POST /api/chat
  */

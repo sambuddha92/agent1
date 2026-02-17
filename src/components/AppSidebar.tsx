@@ -10,9 +10,9 @@ import {
   Plus,
   Search,
   Image as ImageIcon,
-  Map,
   Trash2,
   X,
+  MessageSquare,
 } from 'lucide-react';
 
 interface AppSidebarProps {
@@ -51,7 +51,6 @@ export default function AppSidebar({
     if (onLoadConversation) {
       onLoadConversation(id);
     }
-    // Close drawer on mobile
     onClose();
   };
 
@@ -59,7 +58,6 @@ export default function AppSidebar({
     if (onNewChat) {
       onNewChat();
     }
-    // Close drawer on mobile
     onClose();
   };
 
@@ -71,20 +69,7 @@ export default function AppSidebar({
     );
   });
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'now';
-    if (diffMins < 60) return `${diffMins}m`;
-    if (diffHours < 24) return `${diffHours}h`;
-    if (diffDays < 7) return `${diffDays}d`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
+  const isGarden = pathname === ROUTES.GARDEN;
 
   return (
     <>
@@ -99,99 +84,104 @@ export default function AppSidebar({
 
       {/* Sidebar */}
       <aside className={`app-sidebar ${isOpen ? 'open' : ''}`}>
-        {/* Fixed Top Section - Never Scrolls */}
+        {/* Fixed Top Section */}
         <div className="sidebar-fixed-section">
-          {/* App Branding */}
-          <div className="px-4 py-5 border-b border-white/10">
-            <Link href={ROUTES.CHAT} className="flex items-center gap-3 group" onClick={onClose}>
-              <Leaf className="icon-xl text-white group-hover:animate-pulse-soft" />
-              <div>
-                <h2 className="font-display text-xl font-bold">{UI_TEXT.APP_NAME}</h2>
-                <p className="text-xs text-white/70 mt-0.5">{UI_TEXT.APP_TAGLINE}</p>
+          {/* App Branding - Minimalist */}
+          <div className="px-4 py-6 border-b border-white/10">
+            <Link href={ROUTES.CHAT} className="flex items-center gap-2 group" onClick={onClose}>
+              <Leaf className="icon-xl text-white group-hover:animate-pulse-soft flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h2 className="font-display text-lg font-bold text-white truncate">{UI_TEXT.APP_NAME}</h2>
               </div>
             </Link>
           </div>
 
-          {/* Primary Actions */}
+          {/* Primary Navigation - ChatGPT Style */}
           <div className="px-3 py-4 space-y-2 border-b border-white/10">
+            {/* New Chat Button */}
             <button
               onClick={handleNewChat}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-white/15 hover:bg-white/20 rounded-lg transition-all font-semibold"
+              className="w-full flex items-center gap-3 px-4 py-3 bg-white/15 hover:bg-white/20 rounded-lg transition-all font-medium text-white text-sm active-press"
               aria-label="Start new chat"
             >
-              <Plus className="icon-lg text-white" />
-              <span>New Chat</span>
+              <Plus className="icon-lg text-white flex-shrink-0" />
+              <span className="truncate">New Chat</span>
             </button>
 
+            {/* Primary Nav Items - Clean Single Line */}
             <Link
-              href="/images"
+              href={ROUTES.GARDEN}
               onClick={onClose}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg transition-all text-sm font-semibold text-white hover:text-white"
-            >
-              <ImageIcon className="icon-md text-white" />
-              <span>My Garden</span>
-            </Link>
-
-            <Link
-              href={ROUTES.BLOOM}
-              onClick={onClose}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm ${
-                pathname === ROUTES.BLOOM
-                  ? 'bg-white/15 text-white font-medium'
-                  : 'hover:bg-white/10 text-white hover:text-white'
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium truncate ${
+                isGarden
+                  ? 'bg-white/15 text-white'
+                  : 'text-white/80 hover:bg-white/10 hover:text-white'
               }`}
             >
-              <Map className="icon-md text-white" />
-              <span>Neighborhood</span>
+              <ImageIcon className="icon-md text-white flex-shrink-0" />
+              <span className="truncate">My Garden</span>
             </Link>
+
           </div>
         </div>
 
-        {/* Scrollable Section */}
+        {/* Scrollable Section - Conversation History */}
         <div className="sidebar-scrollable-section">
-          {/* Your Chats Section */}
           <div className="px-3 py-4">
-            <h3 className="px-4 text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">
-              Your Chats
-            </h3>
-            {showSearch ? (
-              <div className="relative mx-4 mb-3 group transition-all duration-200">
+            {/* Section Header - Uppercase, Muted (ChatGPT Style) */}
+            <div className="flex items-center justify-between mb-3 px-4">
+              <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wide">
+                Chats
+              </h3>
+              {!showSearch && conversations.length > 0 && (
+                <button
+                  onClick={() => setShowSearch(true)}
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                  aria-label="Search chats"
+                  title="Search"
+                >
+                  <Search className="icon-sm text-white/40 hover:text-white/60" />
+                </button>
+              )}
+            </div>
+
+            {/* Search Bar */}
+            {showSearch && (
+              <div className="relative mx-4 mb-4 group transition-all duration-200 animate-scale-in">
                 <input
                   type="text"
-                  placeholder="Search chats..."
+                  placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Escape' && setShowSearch(false)}
-                  className="w-full px-10 py-2.5 bg-white/15 text-white rounded-lg placeholder:text-white/50 pr-10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setShowSearch(false);
+                      setSearchQuery('');
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-white/15 text-white rounded-md placeholder:text-white/40 text-xs focus:outline-none focus:ring-2 focus:ring-white/30 focus:bg-white/20 transition-all"
                   autoFocus
                 />
-                <Search className="absolute left-3 top-2.5 icon-md text-white/50 transition-colors" />
                 <button
-                  onClick={() => setShowSearch(false)}
-                  className="absolute right-3 top-2.5 p-1 hover:bg-white/10 rounded-full transition-colors"
+                  onClick={() => {
+                    setShowSearch(false);
+                    setSearchQuery('');
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-white/10 rounded transition-colors"
                   aria-label="Close search"
                 >
-                  <X className="icon-md text-white/50 hover:text-white" />
+                  <X className="icon-sm text-white/40 hover:text-white/70" />
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={() => setShowSearch(true)}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg transition-all text-sm font-semibold text-white hover:text-white mb-3"
-                aria-label="Search chats"
-              >
-                <Search className="icon-lg text-white" />
-                <span>Search Chats</span>
-              </button>
             )}
+
+            {/* Conversation List */}
             <div className="space-y-1">
               {filteredConversations.length === 0 ? (
                 <div className="px-4 py-8 text-center">
-                  <p className="text-sm text-white/50">
-                    {searchQuery ? 'No matches found' : 'No conversations yet'}
-                  </p>
-                  <p className="text-xs text-white/40 mt-2">
-                    {searchQuery ? 'Try a different search' : 'Start chatting to begin!'}
+                  <MessageSquare className="icon-md text-white/20 mx-auto mb-2" />
+                  <p className="text-xs text-white/40">
+                    {searchQuery ? 'No matches' : 'No chats yet'}
                   </p>
                 </div>
               ) : (
@@ -199,23 +189,18 @@ export default function AppSidebar({
                   <button
                     key={conversation.id}
                     onClick={() => handleConversationClick(conversation.id)}
-                    className={`w-full flex items-start px-4 py-3 rounded-lg transition-all text-left group ${
+                    className={`w-full flex items-start gap-2 px-3 py-2.5 rounded-md transition-all text-left group overflow-hidden ${
                       conversation.id === currentConversationId
                         ? 'bg-white/15 text-white'
                         : 'text-white/70 hover:bg-white/10 hover:text-white'
                     }`}
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-sm font-medium truncate block">
-                          {conversation.title || 'Untitled conversation'}
-                        </span>
-                        <span className="text-xs text-white/40 flex-shrink-0">
-                          {formatDate(conversation.updated_at)}
-                        </span>
-                      </div>
+                    <div className="flex-1 min-w-0 mt-0.5">
+                      <p className="text-xs font-medium truncate leading-snug">
+                        {conversation.title || 'Untitled'}
+                      </p>
                       {conversation.summary && (
-                        <p className="text-xs text-white/50 mt-1 line-clamp-2">
+                        <p className="text-xs text-white/50 mt-0.5 line-clamp-1">
                           {conversation.summary}
                         </p>
                       )}
@@ -223,11 +208,11 @@ export default function AppSidebar({
                     {onDeleteConversation && (
                       <button
                         onClick={(e) => onDeleteConversation(conversation.id, e)}
-                        className="flex-shrink-0 flex items-center justify-center rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                        className="flex-shrink-0 p-1.5 rounded hover:bg-red-500/20 text-white/30 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-all"
                         aria-label="Delete conversation"
                         title="Delete"
                       >
-                        <Trash2 className="icon-sm" />
+                        <Trash2 className="icon-xs" />
                       </button>
                     )}
                   </button>

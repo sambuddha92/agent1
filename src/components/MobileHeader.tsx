@@ -23,14 +23,15 @@ export default function MobileHeader({ onMenuToggle, isMenuOpen }: MobileHeaderP
         )}
       </button>
 
-      <div className="flex items-center gap-2">
-        <Leaf className="icon-xl icon-primary" />
-        <span className="font-display text-lg font-bold text-primary">
+      {/* App Name - Minimal */}
+      <div className="flex items-center gap-1.5 flex-1 justify-center">
+        <Leaf className="icon-lg icon-primary flex-shrink-0" />
+        <span className="font-display text-sm font-bold text-primary truncate">
           FloatGreens
         </span>
       </div>
 
-      <div className="w-10" /> {/* Spacer for centering */}
+      <div className="w-10" /> {/* Spacer for balance */}
     </header>
   );
 }

@@ -255,6 +255,7 @@ export function checkRateLimit(
   const allowed = limiter.check(key);
 
   if (!allowed) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { NextResponse } = require('next/server');
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',

@@ -16,16 +16,12 @@ export const ROUTES = {
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
   CHAT: '/chat',
-  GARDEN: '/garden',
-  DREAM: '/dream',
-  BLOOM: '/bloom',
+  GARDEN: '/my-garden',
 } as const;
 
 export const PROTECTED_ROUTES = [
   ROUTES.CHAT,
   ROUTES.GARDEN,
-  ROUTES.DREAM,
-  ROUTES.BLOOM,
 ] as const;
 
 export const AUTH_ROUTES = [ROUTES.LOGIN, ROUTES.SIGNUP, ROUTES.FORGOT_PASSWORD, ROUTES.RESET_PASSWORD] as const;
@@ -172,8 +168,6 @@ export const UI_CONFIG = {
 // ============================================
 
 export const FEATURE_FLAGS = {
-  ENABLE_DREAM_RENDERS: false,
-  ENABLE_BLOOM_MAP: false,
   ENABLE_PLANT_LEDGER: false,
   ENABLE_SWAP_AGENT: false,
   ENABLE_WEATHER_ALERTS: true,

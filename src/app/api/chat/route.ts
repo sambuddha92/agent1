@@ -8,6 +8,7 @@ import { chatRequestSchema, validateAndFormat } from '@/lib/validation';
 import { chatRateLimiter } from '@/lib/rate-limit';
 import { streamText } from 'ai';
 import { NextResponse } from 'next/server';
+import type { MessageContent } from '@/types';
 
 export async function POST(request: Request) {
   try {
@@ -16,28 +17,28 @@ export async function POST(request: Request) {
 
     // Extract and validate input using Zod schema
     const message = formData.get('message') as string | null;
-    const image = formData.get('image') as File | null;
+    const images = formData.getAll('images') as File[];
     const conversationId = formData.get('conversationId') as string | null;
 
-    // Validate request data
+    // Validate request data (use first image for schema validation if exists)
     const validation = validateAndFormat(chatRequestSchema, {
       message: message || '',
-      image: image || undefined,
+      image: images.length > 0 ? images[0] : undefined,
       conversationId: conversationId || undefined,
     });
 
     if (!validation.success) {
-      console.warn('[POST /api/chat] Validation failed:', validation.errors);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const errors = (validation as any).errors;
+      console.warn('[POST /api/chat] Validation failed:', errors);
       return NextResponse.json(
         { 
           error: 'Validation failed',
-          details: validation.errors,
+          details: errors,
         },
         { status: 400 }
       );
     }
-
-    const validated = validation.data;
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -66,44 +67,64 @@ export async function POST(request: Request) {
 
     let imageAnalysis: string | undefined;
     let imageUrl: string | undefined;
-    if (image) {
+    const analysisResults: string[] = [];
+
+    if (images.length > 0) {
       try {
-        // Validate MIME type
-        if (!image.type.startsWith('image/')) {
-          throw new Error('Invalid file type - must be an image');
+        // Process all uploaded images
+        for (let i = 0; i < images.length; i++) {
+          const image = images[i];
+          
+          // Validate MIME type
+          if (!image.type.startsWith('image/')) {
+            console.warn(`[POST /api/chat] Image ${i + 1}: Invalid file type - must be an image`);
+            continue;
+          }
+
+          console.log(`[POST /api/chat] Processing image ${i + 1}/${images.length}:`, { name: image.name, type: image.type, size: image.size });
+
+          // Convert FormData file to Buffer
+          const bytes = await image.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+          console.log(`[POST /api/chat] Buffer created for image ${i + 1}:`, { bufferLength: buffer.length });
+          
+          // Upload image to Supabase and get public URL
+          const uploadedImage = await uploadImage(buffer, image.type, 'uploaded', user.id, 'Chat uploaded image');
+          
+          // Keep first image URL for backward compatibility
+          if (i === 0) {
+            imageUrl = uploadedImage.url;
+          }
+          
+          console.log(`[POST /api/chat] Image ${i + 1} uploaded:`, uploadedImage.url);
+          
+          // Analyze the image using the original buffer and MIME type
+          console.log(`[POST /api/chat] Starting analysis for image ${i + 1}...`);
+          const analysis = await analyzeImage(buffer, image.type);
+          analysisResults.push(`Image ${i + 1}: ${analysis}`);
+          console.log(`[POST /api/chat] Image ${i + 1} analyzed:`, analysis);
         }
 
-        console.log('[POST /api/chat] Processing image:', { name: image.name, type: image.type, size: image.size });
-
-        // Convert FormData file to Buffer
-        const bytes = await image.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        console.log('[POST /api/chat] Buffer created:', { bufferLength: buffer.length });
-        
-        // Upload image to Supabase and get public URL
-        const uploadedImage = await uploadImage(buffer, image.type, 'uploaded', user.id, 'Chat uploaded image');
-        imageUrl = uploadedImage.url;
-        console.log('[POST /api/chat] Image uploaded:', imageUrl);
-        
-        // Analyze the image using the original buffer and MIME type
-        console.log('[POST /api/chat] Starting image analysis...');
-        imageAnalysis = await analyzeImage(buffer, image.type);
-        console.log('[POST /api/chat] Image analyzed:', imageAnalysis);
+        // Combine all analyses
+        imageAnalysis = analysisResults.length > 0 
+          ? analysisResults.join('\n\n')
+          : 'Images uploaded and processed (no specific objects detected)';
+          
       } catch (err) {
         console.error('[POST /api/chat] Image processing failed:', err);
         // Continue with chat even if image processing fails - don't block the entire request
         // But provide informative feedback to user about what went wrong
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        imageAnalysis = `⚠️ Image uploaded but analysis unavailable (${errorMessage}). You can still describe what you see!`;
+        imageAnalysis = `⚠️ Image(s) uploaded but analysis unavailable (${errorMessage}). You can still describe what you see!`;
         imageUrl = undefined; // Don't include broken URL
       }
     }
 
     // Build user message with image context if available
     let userMessage = message;
-    let hasImage = !!image;
+    const hasImage = images.length > 0;
     
-    if (image) {
+    if (images.length > 0) {
       // Always include image analysis, even if it's "no objects found"
       const analysisText = imageAnalysis && imageAnalysis !== 'No identifiable objects found' 
         ? imageAnalysis 
@@ -122,9 +143,18 @@ export async function POST(request: Request) {
     console.log('[POST /api/chat] Image URL:', imageUrl);
 
     // Select model based on message complexity
+    // When image is present, include it in message content array so selectModel detects it
+    const messageContent: string | MessageContent[] = hasImage
+      ? [
+          { type: 'text', text: userMessage } as MessageContent,
+          { type: 'image', image: 'data:image/webp;base64,' } as MessageContent, // Indicator that image is present
+        ]
+      : userMessage;
+
     const selection = selectModel([
-      { role: 'user' as const, content: userMessage, id: 'user-msg' }
+      { role: 'user' as const, content: messageContent, id: 'user-msg' }
     ]);
+
 
     console.log('[POST /api/chat] Selected model:', selection.modelId, 'Tier:', selection.tier);
 

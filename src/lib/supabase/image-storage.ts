@@ -68,8 +68,17 @@ export const getImageUrl = (path: string): string => {
   return supabase.storage.from('images').getPublicUrl(path).data.publicUrl;
 };
 
-export const deleteImage = async (imageId: string): Promise<void> => {
+export const deleteImage = async (imageId: string, storagePath: string): Promise<void> => {
   const supabase = createClient();
-  const { error } = await supabase.from('images').delete().eq('id', imageId);
-  if (error) throw new Error('Image deletion failed: ' + error.message);
+  
+  // Delete from storage bucket first
+  const { error: storageError } = await supabase.storage
+    .from('images')
+    .remove([storagePath]);
+  
+  if (storageError) throw new Error('Storage deletion failed: ' + storageError.message);
+  
+  // Then delete the database record
+  const { error: dbError } = await supabase.from('images').delete().eq('id', imageId);
+  if (dbError) throw new Error('Database record deletion failed: ' + dbError.message);
 };

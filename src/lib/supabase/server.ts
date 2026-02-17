@@ -27,21 +27,6 @@ function validateSupabaseEnv(): void {
   }
 }
 
-/**
- * Validate Supabase service role key availability
- * Throws early if missing - service client requires this key
- * 
- * @throws {Error} If service role key is not set
- */
-function validateServiceRoleKey(): void {
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error(
-      'Missing SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
-      'Service client operations will fail. Check your .env.local file.'
-    );
-  }
-}
-
 // ============================================
 // Cookie Handler Utilities
 // ============================================
@@ -59,7 +44,7 @@ function safeCookieOperation(
 ): void {
   try {
     setter();
-  } catch (error) {
+  } catch {
     // Silent in Server Components, but log in development
     if (process.env.NODE_ENV === 'development') {
       console.debug(
@@ -139,12 +124,16 @@ export function createServiceClient() {
         set(name: string, value: string, options: CookieOptions) {
           try {
             cookieStore.set({ name, value, ...options });
-          } catch {}
+          } catch {
+            // Silent catch - cookie operations may fail in some contexts
+          }
         },
         remove(name: string, options: CookieOptions) {
           try {
             cookieStore.set({ name, value: '', ...options });
-          } catch {}
+          } catch {
+            // Silent catch - cookie operations may fail in some contexts
+          }
         },
       },
     }

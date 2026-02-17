@@ -228,7 +228,8 @@ export interface Message {
   content: string | MessageContent[];
   modelId?: string; // Bedrock model ID (only in development)
   tier?: ModelTier; // Model tier used (only in development)
-  imageUrl?: string; // URL of uploaded/shared image
+  imageUrl?: string; // URL of uploaded/shared image (first image for compatibility)
+  imageUrls?: string[]; // URLs of all uploaded/shared images
 }
 
 export interface MessageContent {

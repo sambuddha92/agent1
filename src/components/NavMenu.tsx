@@ -19,18 +19,6 @@ export default function NavMenu({ currentPath }: NavMenuProps) {
       label: 'My Garden',
       description: 'Track plants',
     },
-    {
-      href: ROUTES.DREAM,
-      icon: '🎨',
-      label: 'Visualize',
-      description: 'Design space',
-    },
-    {
-      href: ROUTES.BLOOM,
-      icon: '🗺️',
-      label: 'Neighborhood',
-      description: 'Community',
-    },
   ];
 
   return (
