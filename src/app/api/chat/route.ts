@@ -5,6 +5,7 @@ import { uploadImage } from '@/lib/supabase/image-storage';
 import { createConversation, saveMessage, generateTitle } from '@/lib/conversations';
 import { FLOATGREENS_SYSTEM_PROMPT } from '@/lib/ai/prompts';
 import { chatRequestSchema, validateAndFormat } from '@/lib/validation';
+import { chatRateLimiter } from '@/lib/rate-limit';
 import { streamText } from 'ai';
 import { NextResponse } from 'next/server';
 
@@ -41,6 +42,26 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check rate limit for this user
+    const rateLimitExceeded = !chatRateLimiter.check(user.id);
+    if (rateLimitExceeded) {
+      console.warn('[POST /api/chat] Rate limit exceeded for user:', user.id);
+      return NextResponse.json(
+        {
+          error: 'Too many requests',
+          message: 'Please try again in a moment',
+          retryAfter: 60,
+        },
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-RateLimit-Reset': new Date(Date.now() + 60000).toISOString(),
+          },
+        }
+      );
     }
 
     let imageAnalysis: string | undefined;
