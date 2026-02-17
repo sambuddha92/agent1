@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { generateDeterministicSeed, generatePlantAvatar } from '@/lib/utils/avatar';
 
 interface AvatarDisplayProps {
@@ -46,14 +47,13 @@ export default function AvatarDisplay({ userName, userEmail, onClick }: AvatarDi
       title="Click to view avatar options"
     >
       {avatarUrl ? (
-        <img
+        <Image
           src={avatarUrl}
           alt={`${userName || userEmail}'s avatar`}
+          width={40}
+          height={40}
           className="w-full h-full object-cover rounded-full"
-          onError={(e) => {
-            // Hide broken image and show fallback
-            e.currentTarget.style.display = 'none';
-          }}
+          unoptimized
         />
       ) : null}
 

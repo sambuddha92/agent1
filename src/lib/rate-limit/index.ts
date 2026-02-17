@@ -301,6 +301,7 @@ export function stopRateLimiters(): void {
 
 // Declare the custom property on the global object
 declare global {
+  // eslint-disable-next-line no-var
   var rateLimitersStopped: boolean;
 }
 

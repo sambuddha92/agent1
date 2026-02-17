@@ -12,15 +12,12 @@ interface UserProfileProps {
 
 export default function UserProfile({ userEmail, userName }: UserProfileProps) {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleSignOut = async () => {
-    setIsLoggingOut(true);
     try {
       await signOut();
     } catch (error) {
       console.error('Sign out error:', error);
-      setIsLoggingOut(false);
     }
   };
 
