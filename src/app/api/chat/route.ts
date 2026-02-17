@@ -3,6 +3,7 @@ import { analyzeImage } from '@/lib/ai/image-analysis';
 import { selectModel } from '@/lib/ai/model-router';
 import { uploadImage } from '@/lib/supabase/image-storage';
 import { createConversation, saveMessage, generateTitle } from '@/lib/conversations';
+import { FLOATGREENS_SYSTEM_PROMPT } from '@/lib/ai/prompts';
 import { streamText } from 'ai';
 import { NextResponse } from 'next/server';
 
@@ -54,8 +55,10 @@ export async function POST(request: Request) {
       } catch (err) {
         console.error('[POST /api/chat] Image processing failed:', err);
         // Continue with chat even if image processing fails - don't block the entire request
-        imageAnalysis = undefined;
-        imageUrl = undefined;
+        // But provide informative feedback to user about what went wrong
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        imageAnalysis = `⚠️ Image uploaded but analysis unavailable (${errorMessage}). You can still describe what you see!`;
+        imageUrl = undefined; // Don't include broken URL
       }
     }
 
@@ -116,9 +119,11 @@ export async function POST(request: Request) {
     }
 
     // Generate streaming response with image context
-    const systemPrompt = hasImage 
-      ? `You are FloatGreens, a witty plant expert. The user has shared an image with you. Always acknowledge that you've received and analyzed the image. Keep responses SHORT, punchy, and actionable.\n\n**STYLE:**\n- Cheeky but helpful. Use sparingly: emojis (max 2), puns (max 1)\n- Conversational but precise. No fluff or repetition\n- Personalize when you know their space/plants. Stay specific.\n\n**CONSTRAINTS:**\n- Keep responses under 150 words unless they ask for detail\n- Lead with the answer/action\n- Use bullet points when listing >2 items\n- One main idea per response\n\n**YOU CAN:**\n- ID plants from photos + health checks\n- Reference user context from memory\n- Warn about weather/plant threats\n- Suggest specific next steps\n\n**DON'T:**\n- Over-explain or use jargon without reason\n- Give generic advice (be personal!)\n- Add unnecessary disclaimers or apologies\n- Use multiple paragraphs for simple answers`
-      : `You are FloatGreens, a witty plant expert. Keep responses SHORT, punchy, and actionable.\n\n**STYLE:**\n- Cheeky but helpful. Use sparingly: emojis (max 2), puns (max 1)\n- Conversational but precise. No fluff or repetition\n- Personalize when you know their space/plants. Stay specific.\n\n**CONSTRAINTS:**\n- Keep responses under 150 words unless they ask for detail\n- Lead with the answer/action\n- Use bullet points when listing >2 items\n- One main idea per response\n\n**YOU CAN:**\n- ID plants from photos + health checks\n- Reference user context from memory\n- Warn about weather/plant threats\n- Suggest specific next steps\n\n**DON'T:**\n- Over-explain or use jargon without reason\n- Give generic advice (be personal!)\n- Add unnecessary disclaimers or apologies\n- Use multiple paragraphs for simple answers`;
+    // Use single source of truth from prompts.ts
+    const imageContextNote = hasImage 
+      ? '\n\nThe user has shared an image with you. Always acknowledge that you\'ve received and analyzed the image.'
+      : '';
+    const systemPrompt = FLOATGREENS_SYSTEM_PROMPT + imageContextNote;
 
     const result = streamText({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -128,22 +133,27 @@ export async function POST(request: Request) {
     });
 
     // Save assistant message in background after we get the full text
-    // Use Promise.resolve to handle the text properly
-    Promise.resolve(result.text)
-      .then(async (fullText) => {
-        try {
-          await saveMessage(
-            finalConversationId,
-            'assistant',
-            fullText,
-            selection.modelId,
-            selection.tier
-          );
-          console.log('[POST /api/chat] Saved assistant message');
-        } catch (error) {
-          console.error('[POST /api/chat] Error saving assistant message:', error);
+    // Use async IIFE to properly handle the promise without blocking response
+    (async () => {
+      try {
+        const fullText = await result.text;
+        const savedMessage = await saveMessage(
+          finalConversationId,
+          'assistant',
+          fullText,
+          selection.modelId,
+          selection.tier
+        );
+        if (savedMessage) {
+          console.log('[POST /api/chat] ✓ Saved assistant message to conversation');
+        } else {
+          console.error('[POST /api/chat] ✗ Message save returned null');
         }
-      });
+      } catch (error) {
+        console.error('[POST /api/chat] ✗ Failed to save assistant message:', error);
+        // Consider implementing retry logic or dead letter queue for failed saves
+      }
+    })();
 
     // Create response with proper streaming headers
     const response = new Response(result.textStream, {

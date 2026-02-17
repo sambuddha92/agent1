@@ -123,8 +123,9 @@ function validateMemories(
     const matchedWords = memoryWords.filter(word => userText.includes(word));
     const matchRatio = matchedWords.length / Math.max(memoryWords.length, 1);
     
-    // Stricter threshold for strict types
-    const threshold = isStrictType ? 0.6 : 0.4;
+    // More lenient thresholds for initial learning phase
+    // Strict types (observation, preference, goal) need 50% match; others need 35%
+    const threshold = isStrictType ? 0.5 : 0.35;
     
     if (matchRatio >= threshold) {
       validated.push({
@@ -135,7 +136,7 @@ function validateMemories(
         source: 'conversation_validated',
       });
     } else {
-      console.log(`[memory-extraction] Rejected memory (match ratio ${matchRatio.toFixed(2)}): ${memory.memoryKey} - ${memory.memoryValue}`);
+      console.log(`[memory-extraction] Rejected memory (match ratio ${matchRatio.toFixed(2)}, threshold ${threshold.toFixed(2)}): ${memory.memoryKey} - ${memory.memoryValue}`);
     }
   }
   
