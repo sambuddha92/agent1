@@ -7,6 +7,9 @@ import { API_ENDPOINTS, UI_TEXT } from '@/lib/constants';
 import { Plus, SendHorizontal, X, Camera, Upload, Loader2, Bot } from 'lucide-react';
 import { uploadImageClient } from '@/lib/supabase/image-client';
 import { createClient } from '@/lib/supabase/client';
+import ModelSelector from '@/components/ModelSelector';
+import { useModelSelector } from '@/hooks/useModelSelector';
+import { resolveUserTier } from '@/lib/ai/model-resolver';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
 
 function ChatPageContent() {
@@ -29,6 +32,20 @@ function ChatPageContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
+
+  // Derive user tier from Supabase user metadata
+  const userTier = resolveUserTier(
+    (user as unknown as { user_metadata?: Record<string, unknown> })?.user_metadata ?? null
+  );
+
+  // Model selector hook — manages preference state per conversation
+  const {
+    preference: modelPreference,
+    setPreference: setModelPreference,
+    options: modelOptions,
+    isSaving: isModelSaving,
+    logUpgradeInterest,
+  } = useModelSelector(currentConversationId, userTier);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -134,8 +151,8 @@ function ChatPageContent() {
       id: Date.now().toString(),
       role: 'user',
       content: input || (uploadedImages.length > 0 ? `Shared ${uploadedImages.length} image${uploadedImages.length > 1 ? 's' : ''}` : ''),
-      imageUrl: imageUrls[0], // For compatibility, keep first image
-      imageUrls: imageUrls, // Store all image URLs
+      imageUrl: imageUrls[0],
+      imageUrls: imageUrls,
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -151,11 +168,13 @@ function ChatPageContent() {
       formData.append('message', input || (uploadedImages.length > 0 ? `Shared ${uploadedImages.length} image${uploadedImages.length > 1 ? 's' : ''}` : ''));
       // Append all images
       uploadedImages.forEach((item) => {
-        formData.append(`images`, item.file);
+        formData.append('images', item.file);
       });
       if (currentConversationId) {
         formData.append('conversationId', currentConversationId);
       }
+      // Send the current model preference to the API
+      formData.append('modelPreference', modelPreference);
 
       const response = await fetch(API_ENDPOINTS.CHAT, {
         method: 'POST',
@@ -240,9 +259,21 @@ function ChatPageContent() {
     <div className="flex flex-col h-full w-full bg-gradient-to-br from-surface via-background to-surface">
       {/* Messages Area */}
       <div className="chat-messages flex-1 overflow-y-auto">
-        {/* Empty State — ChatGPT Style: Just the greeting, no cards */}
+        {/* Empty State */}
         {messages.length === 0 && (
           <div className="flex flex-col justify-center items-center h-full px-6 animate-fade-in">
+            {/* Model selector in empty state header */}
+            <div className="flex items-center gap-2 mb-6">
+              <ModelSelector
+                preference={modelPreference}
+                onPreferenceChange={setModelPreference}
+                userTier={userTier}
+                options={modelOptions}
+                onUpgradeClick={logUpgradeInterest}
+                isSaving={isModelSaving}
+                disabled={isLoading}
+              />
+            </div>
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-primary mb-3 text-center leading-tight">
               What can I help with?
             </h2>
@@ -269,8 +300,10 @@ function ChatPageContent() {
                 >
                   {message.role === 'user' && (
                     <>
-                      {/* Display all uploaded images */}
-                      {(message.imageUrls && message.imageUrls.length > 0 ? message.imageUrls : (message.imageUrl ? [message.imageUrl] : [])).map((url, _idx) => (
+                      {(message.imageUrls && message.imageUrls.length > 0
+                        ? message.imageUrls
+                        : message.imageUrl ? [message.imageUrl] : []
+                      ).map((url, _idx) => (
                         <div key={_idx} className="mb-3 rounded-lg overflow-hidden bg-black/10 relative w-fit">
                           <Image
                             src={url}
@@ -312,8 +345,8 @@ function ChatPageContent() {
             <div className="chat-bubble chat-bubble-assistant">
               <div className="flex space-x-2">
                 <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               </div>
             </div>
           </div>
@@ -329,10 +362,10 @@ function ChatPageContent() {
         </div>
       )}
 
-      {/* ===== COMMAND CENTER INPUT (ChatGPT Pill Style) ===== */}
+      {/* ===== COMMAND CENTER INPUT ===== */}
       <div className="chat-footer">
         <form onSubmit={handleSubmit}>
-          {/* Image Preview — Inside the pill, horizontally scrollable */}
+          {/* Image Preview */}
           {uploadedImages.length > 0 && (
             <div className="command-pill-images-container animate-scale-in">
               {uploadedImages.map((item, index) => (
@@ -362,6 +395,21 @@ function ChatPageContent() {
             <div className="command-pill-preview animate-scale-in">
               <Loader2 className="w-5 h-5 text-primary animate-spin flex-shrink-0" />
               <span className="text-xs text-text-secondary">Uploading image...</span>
+            </div>
+          )}
+
+          {/* Model Selector + Pill row */}
+          {messages.length > 0 && (
+            <div className="flex items-center justify-center mb-2 max-w-3xl mx-auto">
+              <ModelSelector
+                preference={modelPreference}
+                onPreferenceChange={setModelPreference}
+                userTier={userTier}
+                options={modelOptions}
+                onUpgradeClick={logUpgradeInterest}
+                isSaving={isModelSaving}
+                disabled={isLoading}
+              />
             </div>
           )}
 

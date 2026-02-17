@@ -281,3 +281,62 @@ export async function updateConversationSummary(
 
   return true;
 }
+
+/**
+ * Update the model preference for a conversation.
+ * Called when user changes the ModelSelector for an existing chat.
+ */
+export async function updateConversationModelPreference(
+  conversationId: string,
+  userId: string,
+  modelPreference: string
+): Promise<boolean> {
+  const supabase = createServiceClient();
+
+  // Validate that preference is one of the allowed values
+  const validPreferences = ['auto', 'fast', 'balanced', 'best'];
+  if (!validPreferences.includes(modelPreference)) {
+    console.warn(
+      `[conversations] Invalid model preference: "${modelPreference}", defaulting to "auto"`
+    );
+    modelPreference = 'auto';
+  }
+
+  const { error } = await supabase
+    .from('conversations')
+    .update({ model_preference: modelPreference })
+    .eq('id', conversationId)
+    .eq('user_id', userId); // Ownership check
+
+  if (error) {
+    console.error('[conversations] Failed to update model preference:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Get a single conversation with its model_preference field.
+ * Used by the PATCH/GET handler to return full conversation data to the client.
+ */
+export async function getConversationWithPreference(
+  conversationId: string,
+  userId: string
+): Promise<(Conversation & { model_preference?: string }) | null> {
+  const supabase = createServiceClient();
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('id', conversationId)
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    console.error('[conversations] Failed to fetch conversation with preference:', error);
+    return null;
+  }
+
+  return data as Conversation & { model_preference?: string };
+}

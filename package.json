@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/dev.js",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -11,6 +11,7 @@
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^4.0.60",
     "@ai-sdk/react": "^3.0.88",
+    "@aws-sdk/client-bedrock": "^3.992.0",
     "@aws-sdk/client-rekognition": "^3.991.0",
     "@aws-sdk/credential-providers": "^3.991.0",
     "@fal-ai/client": "^1.9.1",

@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
 import { analyzeImage } from '@/lib/ai/image-analysis';
 import { selectModel } from '@/lib/ai/model-router';
+import { resolveModel, resolveUserTier, parseModelPreference } from '@/lib/ai/model-resolver';
 import { uploadImage } from '@/lib/supabase/image-storage';
 import { createConversation, saveMessage, generateTitle } from '@/lib/conversations';
 import { FLOATGREENS_SYSTEM_PROMPT } from '@/lib/ai/prompts';
-import { assembleSoulPromptWithWisdom } from '@/lib/ai/soul';
+import { buildWisdomContext } from '@/lib/wisdom';
 import { chatRequestSchema, validateAndFormat } from '@/lib/validation';
 import { chatRateLimiter } from '@/lib/rate-limit';
 import { streamText } from 'ai';
@@ -20,6 +21,10 @@ export async function POST(request: Request) {
     const message = formData.get('message') as string | null;
     const images = formData.getAll('images') as File[];
     const conversationId = formData.get('conversationId') as string | null;
+
+    // Extract model preference from FormData (defaults to 'auto' if absent)
+    const rawModelPreference = formData.get('modelPreference') as string | null;
+    const modelPreference = parseModelPreference(rawModelPreference);
 
     // Validate request data (use first image for schema validation if exists)
     const validation = validateAndFormat(chatRequestSchema, {
@@ -65,6 +70,11 @@ export async function POST(request: Request) {
         }
       );
     }
+
+    // Resolve user tier from metadata (free by default — future billing hook)
+    const userTier = resolveUserTier(
+      user.user_metadata as Record<string, unknown> | null
+    );
 
     let imageAnalysis: string | undefined;
     let imageUrl: string | undefined;
@@ -113,11 +123,10 @@ export async function POST(request: Request) {
           
       } catch (err) {
         console.error('[POST /api/chat] Image processing failed:', err);
-        // Continue with chat even if image processing fails - don't block the entire request
-        // But provide informative feedback to user about what went wrong
+        // Continue with chat even if image processing fails
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         imageAnalysis = `⚠️ Image(s) uploaded but analysis unavailable (${errorMessage}). You can still describe what you see!`;
-        imageUrl = undefined; // Don't include broken URL
+        imageUrl = undefined;
       }
     }
 
@@ -126,12 +135,10 @@ export async function POST(request: Request) {
     const hasImage = images.length > 0;
     
     if (images.length > 0) {
-      // Always include image analysis, even if it's "no objects found"
       const analysisText = imageAnalysis && imageAnalysis !== 'No identifiable objects found' 
         ? imageAnalysis 
         : 'Image uploaded and processed (no specific objects detected)';
       
-      // If user didn't provide text, still mention the image
       if (!message || message.trim() === '') {
         userMessage = `📸 Shared an image for analysis.\n\nImage Analysis: ${analysisText}`;
       } else {
@@ -141,23 +148,40 @@ export async function POST(request: Request) {
 
     console.log('[POST /api/chat] User message:', userMessage);
     console.log('[POST /api/chat] Has image:', hasImage);
-    console.log('[POST /api/chat] Image URL:', imageUrl);
+    console.log('[POST /api/chat] Model preference:', modelPreference);
 
-    // Select model based on message complexity
-    // When image is present, include it in message content array so selectModel detects it
+    // Build message content array for model router
+    // When image is present, include it so classifyTier() detects it correctly
     const messageContent: string | MessageContent[] = hasImage
       ? [
           { type: 'text', text: userMessage || '' } as MessageContent,
-          { type: 'image', image: 'data:image/webp;base64,' } as MessageContent, // Indicator that image is present
+          { type: 'image', image: 'data:image/webp;base64,' } as MessageContent,
         ]
       : userMessage || '';
 
-    const selection = selectModel([
-      { role: 'user' as const, content: messageContent, id: 'user-msg' }
-    ]);
+    const messages = [{ role: 'user' as const, content: messageContent, id: 'user-msg' }];
 
-
-    console.log('[POST /api/chat] Selected model:', selection.modelId, 'Tier:', selection.tier);
+    // ============================================
+    // MODEL RESOLUTION (middleware layer)
+    // ============================================
+    // resolveModel() wraps the existing selectModel() as middleware.
+    // If preference is 'auto', it fully delegates to the existing classifyTier() logic.
+    // On any failure, it falls back to selectModel() — the pipeline is never broken.
+    let selection;
+    try {
+      selection = resolveModel({
+        preference: modelPreference,
+        userTier,
+        messages,
+      });
+      console.log(
+        `[POST /api/chat] Resolved model: preference=${modelPreference} → modelId=${selection.modelId}, tier=${selection.tier}, auto=${selection.isAuto}`
+      );
+    } catch (resolverError) {
+      // SAFETY FALLBACK: if resolver throws, use original selectModel() directly
+      console.error('[POST /api/chat] resolveModel failed, using selectModel fallback:', resolverError);
+      selection = selectModel(messages);
+    }
 
     // Create conversation if needed
     let finalConversationId = conversationId;
@@ -186,16 +210,13 @@ export async function POST(request: Request) {
       console.error('[POST /api/chat] Failed to save user message');
     }
 
-    // Generate streaming response with image context
-    // Build system prompt with SOUL + base prompt + WISDOM layers
+    // Build system prompt: base + wisdom context
     const imageContextNote = hasImage 
       ? '\n\nThe user has shared an image with you. Always acknowledge that you\'ve received and analyzed the image.'
       : '';
-    const basePrompt = FLOATGREENS_SYSTEM_PROMPT + imageContextNote;
-    
-    // Assemble full prompt with Soul and Wisdom
-    // Context tags can be derived from message content for smarter wisdom selection
-    const systemPrompt = assembleSoulPromptWithWisdom(basePrompt);
+    const wisdomContext = buildWisdomContext();
+    const systemPrompt = FLOATGREENS_SYSTEM_PROMPT + imageContextNote + 
+      (wisdomContext ? `\n\n## Plant Care Knowledge\n${wisdomContext}` : '');
 
     const result = streamText({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -205,7 +226,6 @@ export async function POST(request: Request) {
     });
 
     // Save assistant message in background after we get the full text
-    // Use async IIFE to properly handle the promise without blocking response
     (async () => {
       try {
         const fullText = await result.text;
@@ -223,21 +243,19 @@ export async function POST(request: Request) {
         }
       } catch (error) {
         console.error('[POST /api/chat] ✗ Failed to save assistant message:', error);
-        // Consider implementing retry logic or dead letter queue for failed saves
       }
     })();
 
-    // Log model selection for monitoring (not exposed to client)
+    // Log model selection for monitoring
     console.log('[POST /api/chat] ✓ Response streaming:', {
       modelId: selection.modelId,
       tier: selection.tier,
+      preference: modelPreference,
+      userTier,
       conversationId: finalConversationId,
-      hasImage: hasImage,
+      hasImage,
     });
 
-    // Create response with secure headers (no internal metadata exposed)
-    // X-Conversation-Id is safe to expose - client needs it to track messages
-    // X-Model-* headers removed to prevent information leakage
     const response = new Response(result.textStream, {
       headers: {
         'Content-Type': 'text/event-stream',
@@ -245,7 +263,7 @@ export async function POST(request: Request) {
         'Connection': 'keep-alive',
         // Safe header: client needs conversation ID for UI updates
         'X-Conversation-Id': finalConversationId,
-        // Remove X-Model-Id and X-Model-Tier to prevent internal detail exposure
+        // Model headers intentionally omitted to prevent internal detail exposure
       },
     });
 
