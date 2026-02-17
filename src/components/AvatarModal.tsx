@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { generateRandomSeed, generatePlantAvatar, getPlantQuoteFromSeed, getRandomPlantQuote } from '@/lib/utils/avatar';
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw, LogOut } from 'lucide-react';
 
 interface AvatarModalProps {
   isOpen: boolean;
   userEmail: string;
   userName?: string;
   onClose: () => void;
+  onSignOut: () => void;
 }
 
-export default function AvatarModal({ isOpen, userEmail, userName, onClose }: AvatarModalProps) {
+export default function AvatarModal({ isOpen, userEmail, userName, onClose, onSignOut }: AvatarModalProps) {
   const [customSeed, setCustomSeed] = useState<string>('');
   const [quote, setQuote] = useState<string>('');
 
@@ -78,7 +79,7 @@ export default function AvatarModal({ isOpen, userEmail, userName, onClose }: Av
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 max-w-md w-full p-6 animate-slide-up">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 max-w-md w-full p-6 animate-slide-up flex flex-col min-h-[420px]">
           {/* Close button */}
           <button
             onClick={onClose}
@@ -138,6 +139,17 @@ export default function AvatarModal({ isOpen, userEmail, userName, onClose }: Av
           <p className="text-center text-white/50 text-xs mt-4">
             {customSeed ? 'Your custom avatar is saved to this device.' : 'Click "New Avatar" to personalize yours!'}
           </p>
+
+          {/* Sign Out Section */}
+          <div className="mt-auto pt-6 border-t border-white/20">
+            <button
+              onClick={onSignOut}
+              className="w-full py-2.5 px-4 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     </>
