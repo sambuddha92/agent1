@@ -13,6 +13,8 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   SIGNUP: '/signup',
+  FORGOT_PASSWORD: '/forgot-password',
+  RESET_PASSWORD: '/reset-password',
   CHAT: '/chat',
   GARDEN: '/garden',
   DREAM: '/dream',
@@ -26,7 +28,7 @@ export const PROTECTED_ROUTES = [
   ROUTES.BLOOM,
 ] as const;
 
-export const AUTH_ROUTES = [ROUTES.LOGIN, ROUTES.SIGNUP] as const;
+export const AUTH_ROUTES = [ROUTES.LOGIN, ROUTES.SIGNUP, ROUTES.FORGOT_PASSWORD, ROUTES.RESET_PASSWORD] as const;
 
 // ============================================
 // API Endpoints

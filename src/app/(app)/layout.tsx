@@ -1,7 +1,11 @@
 import Link from 'next/link';
 import { ROUTES, UI_TEXT } from '@/lib/constants';
+import { getCurrentUser } from '@/lib/auth/actions';
+import UserProfile from '@/components/UserProfile';
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser();
+  
   return (
     <div className="flex h-screen bg-surface">
       {/* Sidebar Navigation */}
@@ -50,7 +54,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
         </nav>
 
-        <div className="p-6 border-t border-white/10">
+        <div className="p-6 border-t border-white/10 space-y-4">
+          {/* User Profile */}
+          {user && (
+            <UserProfile 
+              userEmail={user.email || ''} 
+              userName={user.user_metadata?.full_name}
+            />
+          )}
+
+          {/* Pro Tip */}
           <div className="bg-white/10 rounded-xl p-5 backdrop-blur">
             <div className="flex items-start gap-3 mb-2">
               <span className="text-xl">💡</span>

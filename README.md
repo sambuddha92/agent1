@@ -41,11 +41,16 @@ CRON_SECRET=your_random_secret
 ### 3. Set up Supabase
 
 1. Create a new Supabase project
-2. Run the migration:
+2. Run the migrations in order:
    ```bash
-   # In Supabase SQL Editor, run: supabase/migrations/001_initial_schema.sql
+   # In Supabase SQL Editor, run in order:
+   # 1. supabase/migrations/001_initial_schema.sql
+   # 2. supabase/migrations/002_user_context_memory.sql
+   # 3. supabase/migrations/003_auto_create_user_profiles.sql
    ```
 3. Enable email auth in Supabase dashboard
+
+**Important:** If you encounter the error `violates foreign key constraint "user_context_memory_user_id_fkey"`, see [MIGRATION_FIX.md](./MIGRATION_FIX.md) for the solution.
 
 ### 4. Run Development Server
 

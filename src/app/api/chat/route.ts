@@ -2,6 +2,7 @@ import { streamText } from 'ai';
 import { FLOATGREENS_SYSTEM_PROMPT } from '@/lib/ai/prompts';
 import { selectModel } from '@/lib/ai/model-router';
 import { createClient } from '@/lib/supabase/server';
+import { buildContextualSystemPrompt, extractMemoriesAsync } from '@/lib/memory';
 // import { floatgreensTools } from '@/lib/ai/tools';
 
 export const runtime = 'edge';
@@ -9,8 +10,10 @@ export const runtime = 'edge';
 /**
  * Chat API Route - Handles streaming AI responses
  * - Authenticates user
+ * - Fetches and injects user context for personalization
  * - Selects optimal AI model based on complexity
  * - Streams response back to client
+ * - Asynchronously extracts memories from conversation
  * 
  * @param req - Request with messages array
  * @returns Streaming text response
@@ -31,8 +34,12 @@ export async function POST(req: Request) {
     });
   }
 
-  // TODO: Fetch user's spatial context (balcony data, plant inventory)
-  // and inject into system prompt for context-aware responses
+  // Build contextual system prompt with user's spatial context and memories
+  // Falls back to base prompt if context unavailable (new users)
+  const systemPrompt = await buildContextualSystemPrompt(
+    FLOATGREENS_SYSTEM_PROMPT,
+    user.id
+  );
 
   // Smart model routing — picks the cheapest model capable of handling this message
   const { model, tier, modelId } = selectModel(messages);
@@ -41,11 +48,15 @@ export async function POST(req: Request) {
   const result = await streamText({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     model: model as any, // Type assertion for Bedrock model compatibility
-    system: FLOATGREENS_SYSTEM_PROMPT,
+    system: systemPrompt,
     messages,
     // TODO: Fix tools for AI SDK v6 - temporarily disabled
     // tools: floatgreensTools,
   });
+
+  // Trigger async memory extraction (fire-and-forget)
+  // This doesn't block the response stream
+  extractMemoriesAsync(messages, user.id);
 
   const response = result.toTextStreamResponse();
 

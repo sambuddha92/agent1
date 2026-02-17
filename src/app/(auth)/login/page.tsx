@@ -9,6 +9,7 @@ import { ROUTES, UI_TEXT } from '@/lib/constants';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -30,7 +31,20 @@ export default function LoginPage() {
       router.push(ROUTES.CHAT);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : UI_TEXT.AUTH_ERROR);
+      if (err instanceof Error) {
+        // Provide more user-friendly error messages
+        if (err.message.includes('Invalid login credentials')) {
+          setError('Invalid email or password. Please check your credentials and try again.');
+        } else if (err.message.includes('Email not confirmed')) {
+          setError('Please verify your email address before signing in. Check your inbox for the confirmation link.');
+        } else if (err.message.includes('User not found')) {
+          setError('No account found with this email. Please sign up first.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError(UI_TEXT.AUTH_ERROR);
+      }
     } finally {
       setLoading(false);
     }
@@ -84,19 +98,37 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="label">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                className="input"
-                placeholder="Enter your password"
-              />
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="password" className="label mb-0">
+                  Password
+                </label>
+                <Link 
+                  href={ROUTES.FORGOT_PASSWORD}
+                  className="text-xs text-primary hover:text-primary-hover transition-colors focus-visible:outline-none focus-visible:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="input pr-12"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
             </div>
 
             <button

@@ -128,6 +128,44 @@ export interface AgentAction {
 }
 
 // ============================================
+// User Context Memory Types
+// ============================================
+
+export type MemoryType = 
+  | 'preference'     // User preferences
+  | 'constraint'     // Physical/time constraints
+  | 'goal'          // User goals
+  | 'observation'   // Agent observations
+  | 'success'       // Successful outcomes
+  | 'failure'       // Failed attempts
+  | 'interaction'   // Interaction patterns
+  | 'context';      // General context
+
+export type MemorySource = 'conversation' | 'observation' | 'explicit' | 'inferred';
+
+export interface UserContextMemory {
+  id: string;
+  user_id: string;
+  memory_type: MemoryType;
+  memory_key: string;
+  memory_value: string;
+  confidence: number;
+  source: MemorySource;
+  conversation_id?: string;
+  expires_at?: string;
+  created_at: string;
+}
+
+export interface UserContext {
+  user: User;
+  balconies: Balcony[];
+  plants: Plant[];
+  recentHealthSnapshots: HealthSnapshot[];
+  memories: UserContextMemory[];
+  summary: string;
+}
+
+// ============================================
 // Weather Types
 // ============================================
 
