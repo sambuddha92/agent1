@@ -1,12 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-
-type Message = {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-};
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS, UI_TEXT } from '@/lib/constants';
+import type { Message } from '@/types';
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -14,13 +10,13 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +33,7 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch(API_ENDPOINTS.CHAT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,13 +47,17 @@ export default function ChatPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        throw new Error(`${UI_TEXT.NETWORK_ERROR}: ${response.statusText}`);
       }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let assistantMessage = '';
       const assistantMessageId = (Date.now() + 1).toString();
+
+      // Extract model information from headers (development only)
+      const modelId = response.headers.get('X-Model-Id');
+      const modelTier = response.headers.get('X-Model-Tier') as Message['tier'];
 
       if (reader) {
         // Add the assistant message placeholder
@@ -67,6 +67,8 @@ export default function ChatPage() {
             id: assistantMessageId,
             role: 'assistant',
             content: '',
+            modelId: modelId || undefined,
+            tier: modelTier || undefined,
           },
         ]);
 
@@ -110,13 +112,13 @@ export default function ChatPage() {
         }
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('[chat] Error:', error);
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString(),
           role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.',
+          content: error instanceof Error ? error.message : UI_TEXT.GENERIC_ERROR,
         },
       ]);
     } finally {
@@ -190,8 +192,23 @@ export default function ChatPage() {
               <p className={`whitespace-pre-wrap leading-relaxed ${
                 message.role === 'user' ? 'text-white' : 'text-text-primary'
               }`}>
-                {message.content}
+                {typeof message.content === 'string' ? message.content : JSON.stringify(message.content)}
               </p>
+              {/* Show model info in development only */}
+              {message.role === 'assistant' && message.modelId && message.tier && (
+                <div className="mt-3 pt-3 border-t border-border/30">
+                  <div className="flex items-center gap-2 text-xs text-text-muted">
+                    <span className="inline-flex items-center gap-1.5 bg-surface/50 px-2 py-1 rounded-md">
+                      <span className="text-primary font-semibold">🤖</span>
+                      <span className="font-mono">{message.modelId}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 bg-surface/50 px-2 py-1 rounded-md">
+                      <span className="text-primary font-semibold">Tier</span>
+                      <span className="font-mono font-bold">{message.tier}</span>
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -226,11 +243,12 @@ export default function ChatPage() {
               type="submit"
               disabled={isLoading || !input.trim()}
               className="btn-primary px-10 sm:px-12 whitespace-nowrap"
+              aria-label="Send message"
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  Sending
+                  {UI_TEXT.SENDING}
                 </span>
               ) : (
                 'Send'

@@ -1,6 +1,16 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { PROTECTED_ROUTES, AUTH_ROUTES, ROUTES } from '../constants';
 
+/**
+ * Middleware function to handle Supabase session management and route protection
+ * - Refreshes expired sessions automatically
+ * - Protects authenticated routes
+ * - Redirects authenticated users away from auth pages
+ * 
+ * @param request - Next.js request object
+ * @returns Next.js response with updated cookies
+ */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -42,27 +52,25 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   // Protected routes — redirect to login if not authenticated
-  const protectedPaths = ['/chat', '/garden', '/dream', '/bloom'];
-  const isProtected = protectedPaths.some((path) =>
+  const isProtected = PROTECTED_ROUTES.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
 
   if (isProtected && !user) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = '/login';
+    redirectUrl.pathname = ROUTES.LOGIN;
     redirectUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname);
     return NextResponse.redirect(redirectUrl);
   }
 
   // Redirect logged-in users away from auth pages
-  const authPaths = ['/login', '/signup'];
-  const isAuthPage = authPaths.some((path) =>
+  const isAuthPage = AUTH_ROUTES.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
 
   if (isAuthPage && user) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = '/chat';
+    redirectUrl.pathname = ROUTES.CHAT;
     return NextResponse.redirect(redirectUrl);
   }
 

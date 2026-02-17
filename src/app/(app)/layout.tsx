@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ROUTES, UI_TEXT } from '@/lib/constants';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -6,17 +7,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar Navigation */}
       <aside className="w-72 gradient-forest text-white shadow-xl flex flex-col">
         <div className="p-8 border-b border-white/10">
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link href={ROUTES.HOME} className="flex items-center gap-3 group">
             <span className="text-4xl group-hover:animate-pulse-soft">🌿</span>
             <div>
-              <h2 className="font-display text-2xl font-bold">FloatGreens</h2>
-              <p className="text-xs text-white/70 mt-1">Your Plant Companion</p>
+              <h2 className="font-display text-2xl font-bold">{UI_TEXT.APP_NAME}</h2>
+              <p className="text-xs text-white/70 mt-1">{UI_TEXT.APP_TAGLINE}</p>
             </div>
           </Link>
         </div>
         
         <nav className="flex-1 px-4 py-6 space-y-1">
-          <Link href="/chat" className="nav-link group">
+          <Link href={ROUTES.CHAT} className="nav-link group">
             <span className="text-2xl group-hover:scale-110 transition-transform">💬</span>
             <div className="flex-1">
               <span className="font-semibold block">Chat</span>
@@ -24,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
           
-          <Link href="/garden" className="nav-link group">
+          <Link href={ROUTES.GARDEN} className="nav-link group">
             <span className="text-2xl group-hover:scale-110 transition-transform">🌱</span>
             <div className="flex-1">
               <span className="font-semibold block">My Garden</span>
@@ -32,7 +33,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
           
-          <Link href="/dream" className="nav-link group">
+          <Link href={ROUTES.DREAM} className="nav-link group">
             <span className="text-2xl group-hover:scale-110 transition-transform">🎨</span>
             <div className="flex-1">
               <span className="font-semibold block">Visualize</span>
@@ -40,7 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
           
-          <Link href="/bloom" className="nav-link group">
+          <Link href={ROUTES.BLOOM} className="nav-link group">
             <span className="text-2xl group-hover:scale-110 transition-transform">🗺️</span>
             <div className="flex-1">
               <span className="font-semibold block">Neighborhood</span>

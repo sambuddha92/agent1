@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ROUTES, UI_TEXT } from '@/lib/constants';
 
 export default function Home() {
   return (
@@ -16,7 +17,7 @@ export default function Home() {
           <div className="mb-20 sm:mb-24 md:mb-32 text-center">
             <div className="inline-block text-6xl sm:text-7xl mb-8 animate-float">🌿</div>
             <h1 className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-primary mb-6 sm:mb-8 tracking-tight">
-              FloatGreens
+              {UI_TEXT.APP_NAME}
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl text-text-primary max-w-3xl mx-auto leading-relaxed font-semibold">
               AI botanist for your balcony. Learns your space, acts proactively, keeps plants thriving.
@@ -25,11 +26,11 @@ export default function Home() {
           
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center mb-24 sm:mb-28 md:mb-32 max-w-md mx-auto">
-            <Link href="/signup" className="btn-primary text-center">
+            <Link href={ROUTES.SIGNUP} className="btn-primary text-center">
               Start Growing Smarter
             </Link>
-            <Link href="/login" className="btn-secondary text-center">
-              Sign In
+            <Link href={ROUTES.LOGIN} className="btn-secondary text-center">
+              {UI_TEXT.SIGN_IN}
             </Link>
           </div>
 
@@ -127,7 +128,7 @@ export default function Home() {
                 3 photos. 2 questions. Your AI garden assistant starts today.
               </p>
               <Link
-                href="/signup"
+                href={ROUTES.SIGNUP}
                 className="inline-flex items-center justify-center px-10 sm:px-12 py-4 sm:py-5 bg-white text-primary rounded-lg font-bold text-base sm:text-lg hover:bg-white/95 hover:scale-105 active:scale-100 transition-all shadow-xl hover:shadow-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30 uppercase tracking-wide"
               >
                 Get Started Free

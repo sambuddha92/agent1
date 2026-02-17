@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ROUTES, UI_TEXT, VALIDATION } from '@/lib/constants';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -40,11 +41,11 @@ export default function SignupPage() {
           full_name: fullName,
         });
 
-        router.push('/chat');
+        router.push(ROUTES.CHAT);
         router.refresh();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign up');
+      setError(err instanceof Error ? err.message : UI_TEXT.AUTH_ERROR);
     } finally {
       setLoading(false);
     }
@@ -123,28 +124,28 @@ export default function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={VALIDATION.PASSWORD_MIN_LENGTH}
                 autoComplete="new-password"
                 className="input"
                 placeholder="Create a strong password"
               />
               <p className="mt-2 text-xs text-text-muted">
-                Must be at least 6 characters
+                Must be at least {VALIDATION.PASSWORD_MIN_LENGTH} characters
               </p>
             </div>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !email || !password || !fullName}
               className="w-full btn-primary"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  Creating account...
+                  {UI_TEXT.CREATING_ACCOUNT}
                 </span>
               ) : (
-                'Create Account'
+                UI_TEXT.SIGN_UP
               )}
             </button>
           </form>
@@ -153,7 +154,7 @@ export default function SignupPage() {
             <p className="text-text-secondary text-sm">
               Already have an account?{' '}
               <Link 
-                href="/login" 
+                href={ROUTES.LOGIN}
                 className="text-primary font-semibold hover:text-primary-hover transition-colors focus-visible:outline-none focus-visible:underline"
               >
                 Sign in
@@ -164,7 +165,7 @@ export default function SignupPage() {
 
         {/* Footer */}
         <p className="text-center text-sm text-text-muted mt-8">
-          FloatGreens • AI-Powered Plant Care
+          {UI_TEXT.APP_NAME} • {UI_TEXT.APP_TAGLINE}
         </p>
       </div>
     </div>

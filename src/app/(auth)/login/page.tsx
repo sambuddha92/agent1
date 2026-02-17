@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ROUTES, UI_TEXT } from '@/lib/constants';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -26,10 +27,10 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      router.push('/chat');
+      router.push(ROUTES.CHAT);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in');
+      setError(err instanceof Error ? err.message : UI_TEXT.AUTH_ERROR);
     } finally {
       setLoading(false);
     }
@@ -100,16 +101,16 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !email || !password}
               className="w-full btn-primary"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  Signing in...
+                  {UI_TEXT.SIGNING_IN}
                 </span>
               ) : (
-                'Sign In'
+                UI_TEXT.SIGN_IN
               )}
             </button>
           </form>
@@ -118,7 +119,7 @@ export default function LoginPage() {
             <p className="text-text-secondary text-sm">
               Don&apos;t have an account?{' '}
               <Link 
-                href="/signup" 
+                href={ROUTES.SIGNUP}
                 className="text-primary font-semibold hover:text-primary-hover transition-colors focus-visible:outline-none focus-visible:underline"
               >
                 Create one
@@ -129,7 +130,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-sm text-text-muted mt-8">
-          FloatGreens • AI-Powered Plant Care
+          {UI_TEXT.APP_NAME} • {UI_TEXT.APP_TAGLINE}
         </p>
       </div>
     </div>

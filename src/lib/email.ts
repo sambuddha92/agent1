@@ -3,6 +3,7 @@
 // ============================================
 
 import { Resend } from 'resend';
+import { EMAIL_CONFIG } from './constants';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -14,6 +15,10 @@ interface SendEmailOptions {
 
 /**
  * Send a transactional email via Resend
+ * 
+ * @param options - Email parameters (to, subject, html)
+ * @returns Resend API response data or null if API key not configured
+ * @throws Error if email sending fails
  */
 export async function sendEmail({ to, subject, html }: SendEmailOptions) {
   if (!process.env.RESEND_API_KEY) {
@@ -23,7 +28,7 @@ export async function sendEmail({ to, subject, html }: SendEmailOptions) {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'FloatGreens 🌿 <notifications@floatgreens.app>',
+      from: EMAIL_CONFIG.FROM_ADDRESS,
       to,
       subject,
       html,
@@ -43,6 +48,11 @@ export async function sendEmail({ to, subject, html }: SendEmailOptions) {
 
 /**
  * Send a weather alert email to a user
+ * 
+ * @param to - Recipient email address
+ * @param userName - User's display name
+ * @param alerts - Array of alert messages
+ * @returns Resend API response data
  */
 export async function sendWeatherAlert(
   to: string,
@@ -55,7 +65,7 @@ export async function sendWeatherAlert(
 
   return sendEmail({
     to,
-    subject: '�️ Heads Up! Weather Drama Incoming for Your Plants',
+    subject: EMAIL_CONFIG.WEATHER_ALERT_SUBJECT,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #16a34a;">�️ Weather Alert!</h2>

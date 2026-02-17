@@ -1,4 +1,6 @@
 import { bedrock } from '@ai-sdk/amazon-bedrock';
+import { MODEL_CONFIG } from '../constants';
+import type { ModelTier, Message, ModelSelection } from '@/types';
 
 // ============================================
 // 5-Tier Model Router — Optimized for Cost
@@ -10,14 +12,12 @@ import { bedrock } from '@ai-sdk/amazon-bedrock';
 // T5: Opus 3       — $15.00/$75.00  — extreme (comprehensive multi-zone redesigns)
 // ============================================
 
-export type ModelTier = 'T1' | 'T2' | 'T3' | 'T4' | 'T5';
-
 const MODEL_IDS: Record<ModelTier, string> = {
-  T1: 'amazon.nova-micro-v1:0',
-  T2: 'amazon.nova-lite-v1:0',
-  T3: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
-  T4: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
-  T5: 'us.anthropic.claude-3-opus-20240229-v1:0',
+  T1: MODEL_CONFIG.T1_MODEL,
+  T2: MODEL_CONFIG.T2_MODEL,
+  T3: MODEL_CONFIG.T3_MODEL,
+  T4: MODEL_CONFIG.T4_MODEL,
+  T5: MODEL_CONFIG.T5_MODEL,
 };
 
 // --------------- Keyword Sets ---------------
@@ -39,11 +39,12 @@ const T3_KEYWORDS =
 
 // --------------- Classification Logic ---------------
 
-interface Message {
-  role: string;
-  content: string | Array<{ type: string; [key: string]: unknown }>;
-}
-
+/**
+ * Check if messages contain image content
+ * 
+ * @param messages - Array of chat messages
+ * @returns True if last message contains images
+ */
 function hasImages(messages: Message[]): boolean {
   const last = messages[messages.length - 1];
   if (!last) return false;
@@ -53,6 +54,12 @@ function hasImages(messages: Message[]): boolean {
   return false;
 }
 
+/**
+ * Extract text content from the last user message
+ * 
+ * @param messages - Array of chat messages
+ * @returns Text content or empty string
+ */
 function getLastUserText(messages: Message[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === 'user') {
@@ -67,10 +74,23 @@ function getLastUserText(messages: Message[]): string {
   return '';
 }
 
+/**
+ * Count total number of user messages in conversation
+ * 
+ * @param messages - Array of chat messages
+ * @returns Count of user messages
+ */
 function countUserMessages(messages: Message[]): number {
   return messages.filter((m) => m.role === 'user').length;
 }
 
+/**
+ * Classify message complexity and select appropriate model tier
+ * Uses cost-optimized heuristics to minimize expenses while maintaining quality
+ * 
+ * @param messages - Array of chat messages
+ * @returns Model tier (T1-T5) based on complexity analysis
+ */
 export function classifyTier(messages: Message[]): ModelTier {
   const text = getLastUserText(messages).trim();
   const len = text.length;
@@ -80,25 +100,25 @@ export function classifyTier(messages: Message[]): ModelTier {
   // ---- T5: Extreme complexity ----
   if (T5_KEYWORDS.test(text)) return 'T5';
   // Very long message with multiple question marks → likely multi-part complex query
-  if (len > 500 && (text.match(/\?/g)?.length ?? 0) >= 3) return 'T5';
+  if (len > MODEL_CONFIG.VERY_LONG_MESSAGE_LENGTH && (text.match(/\?/g)?.length ?? 0) >= MODEL_CONFIG.MULTI_QUESTION_THRESHOLD) return 'T5';
   // Long conversation threads on complex topics
-  if (userMsgCount > 8 && T4_KEYWORDS.test(text)) return 'T5';
+  if (userMsgCount > MODEL_CONFIG.LONG_CONVERSATION_THRESHOLD && T4_KEYWORDS.test(text)) return 'T5';
 
   // ---- T4: Complex tasks ----
   if (containsImages && T4_KEYWORDS.test(text)) return 'T4';
   if (T4_KEYWORDS.test(text)) return 'T4';
   // Long messages with images
-  if (containsImages && len > 200) return 'T4';
+  if (containsImages && len > MODEL_CONFIG.MEDIUM_MESSAGE_LENGTH) return 'T4';
 
   // ---- T3: Moderate complexity ----
   if (containsImages) return 'T3'; // Any image defaults to at least Haiku
   if (T3_KEYWORDS.test(text)) return 'T3';
-  if (len > 300) return 'T3'; // Longer messages need more nuance
+  if (len > MODEL_CONFIG.LONG_MESSAGE_LENGTH) return 'T3'; // Longer messages need more nuance
 
   // ---- T1: Trivial ----
   if (GREETING_PATTERNS.test(text) && len < 50) return 'T1';
   if (ACK_PATTERNS.test(text)) return 'T1';
-  if (len < 30 && !text.includes('?')) return 'T1';
+  if (len < MODEL_CONFIG.SHORT_MESSAGE_LENGTH && !text.includes('?')) return 'T1';
 
   // ---- T2: Simple Q&A (default) ----
   return 'T2';
@@ -106,7 +126,14 @@ export function classifyTier(messages: Message[]): ModelTier {
 
 // --------------- Public API ---------------
 
-export function selectModel(messages: Message[]) {
+/**
+ * Select optimal AI model based on message complexity
+ * Implements cost-optimized routing to minimize API expenses
+ * 
+ * @param messages - Array of chat messages
+ * @returns Selected model instance, tier, and model ID
+ */
+export function selectModel(messages: Message[]): ModelSelection {
   const tier = classifyTier(messages);
   const modelId = MODEL_IDS[tier];
 

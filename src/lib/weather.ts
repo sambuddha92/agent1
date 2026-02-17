@@ -2,31 +2,23 @@
 // OpenWeatherMap Integration
 // ============================================
 
+import { WEATHER_CONFIG } from './constants';
+import type { WeatherForecast, ForecastDay, WeatherAlertType } from '@/types';
+
 const OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5';
-
-interface WeatherForecast {
-  city: string;
-  days: ForecastDay[];
-}
-
-interface ForecastDay {
-  date: string;
-  temp_min: number;
-  temp_max: number;
-  humidity: number;
-  description: string;
-  wind_speed: number;
-  rain_mm: number;
-  alerts: string[];
-}
 
 /**
  * Get weather forecast from OpenWeatherMap
  * Parses response into gardening-relevant data with alerts
+ * 
+ * @param city - City name (e.g., "Mumbai", "Berlin")
+ * @param days - Number of forecast days (default: 3, max: 5)
+ * @returns Weather forecast with gardening-relevant alerts
+ * @throws Error if API key is not configured or API request fails
  */
 export async function getWeatherForecast(
   city: string,
-  days: number = 3
+  days: number = WEATHER_CONFIG.DEFAULT_FORECAST_DAYS
 ): Promise<WeatherForecast> {
   const apiKey = process.env.OPENWEATHER_API_KEY;
 
@@ -81,12 +73,12 @@ export async function getWeatherForecast(
     const maxWind = Math.max(...windSpeeds);
 
     // Generate gardening-relevant alerts
-    const alerts: string[] = [];
-    if (tempMin < 2) alerts.push('FROST_WARNING');
-    if (tempMax > 35) alerts.push('HEATWAVE');
-    if (rainTotal > 20) alerts.push('HEAVY_RAIN');
-    if (avgHumidity > 80 && tempMax > 25) alerts.push('FUNGAL_RISK');
-    if (maxWind > 40) alerts.push('HIGH_WIND');
+    const alerts: WeatherAlertType[] = [];
+    if (tempMin < WEATHER_CONFIG.FROST_THRESHOLD_CELSIUS) alerts.push('FROST_WARNING');
+    if (tempMax > WEATHER_CONFIG.HEATWAVE_THRESHOLD_CELSIUS) alerts.push('HEATWAVE');
+    if (rainTotal > WEATHER_CONFIG.HEAVY_RAIN_THRESHOLD_MM) alerts.push('HEAVY_RAIN');
+    if (avgHumidity > WEATHER_CONFIG.HIGH_HUMIDITY_THRESHOLD && tempMax > WEATHER_CONFIG.HUMID_TEMP_THRESHOLD) alerts.push('FUNGAL_RISK');
+    if (maxWind > WEATHER_CONFIG.HIGH_WIND_THRESHOLD_KMH) alerts.push('HIGH_WIND');
 
     forecastDays.push({
       date,
@@ -108,6 +100,9 @@ export async function getWeatherForecast(
 
 /**
  * Check if weather conditions warrant proactive user notification
+ * 
+ * @param forecast - Weather forecast data
+ * @returns Array of human-readable alert messages
  */
 export function getWeatherAlerts(forecast: WeatherForecast): string[] {
   const criticalAlerts: string[] = [];

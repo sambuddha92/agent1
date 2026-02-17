@@ -1,6 +1,12 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+/**
+ * Create a Supabase client for server-side usage (Server Components, API Routes)
+ * Handles cookie-based authentication with automatic session refresh
+ * 
+ * @returns Configured Supabase server client with user-level permissions
+ */
 export function createClient() {
   const cookieStore = cookies();
 
@@ -32,6 +38,13 @@ export function createClient() {
   );
 }
 
+/**
+ * Create a Supabase service client with admin privileges
+ * Uses service role key to bypass Row Level Security (RLS)
+ * ⚠️ USE WITH CAUTION - Only for trusted server-side operations
+ * 
+ * @returns Configured Supabase service client with admin permissions
+ */
 export function createServiceClient() {
   const cookieStore = cookies();
 

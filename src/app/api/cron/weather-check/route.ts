@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { getWeatherForecast, getWeatherAlerts } from '@/lib/weather';
 import { sendWeatherAlert } from '@/lib/email';
+import { WEATHER_CONFIG } from '@/lib/constants';
 
 export const runtime = 'edge';
 
 /**
  * Vercel Cron endpoint — runs every 6 hours
  * Checks weather for all active users and sends alerts
+ * 
+ * @param request - Next.js request with authorization header
+ * @returns JSON response with alert statistics
  */
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -32,7 +36,7 @@ export async function GET(request: NextRequest) {
     for (const user of users || []) {
       try {
         // Get weather forecast for user's city
-        const forecast = await getWeatherForecast(user.city, 3);
+        const forecast = await getWeatherForecast(user.city, WEATHER_CONFIG.DEFAULT_FORECAST_DAYS);
         const alerts = getWeatherAlerts(forecast);
 
         if (alerts.length > 0) {

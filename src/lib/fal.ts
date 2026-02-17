@@ -3,15 +3,17 @@
 // ============================================
 
 import { fal } from '@fal-ai/client';
-
-interface GenerateImageResult {
-  imageUrl: string;
-  seed: number;
-}
+import { IMAGE_CONFIG } from './constants';
+import type { GenerateImageResult } from '@/types';
 
 /**
  * Generate an image using fal.ai Flux Pro
  * Used for Dream Balcony renders and Bloom Map sketches
+ * 
+ * @param prompt - Text prompt for image generation
+ * @param imageUrl - Optional source image URL for img2img transformation
+ * @returns Generated image URL and seed
+ * @throws Error if FAL_KEY is not configured
  */
 export async function generateImage(
   prompt: string,
@@ -23,14 +25,14 @@ export async function generateImage(
 
   if (imageUrl) {
     // img2img — Dream Balcony render (transform existing photo)
-    const result = (await fal.subscribe('fal-ai/flux-pro/v1.1', {
+    const result = (await fal.subscribe(IMAGE_CONFIG.FAL_MODEL, {
       input: {
         prompt,
         image_url: imageUrl,
-        num_images: 1,
-        image_size: 'landscape_16_9',
-        num_inference_steps: 28,
-        guidance_scale: 3.5,
+        num_images: IMAGE_CONFIG.NUM_IMAGES,
+        image_size: IMAGE_CONFIG.DEFAULT_IMAGE_SIZE,
+        num_inference_steps: IMAGE_CONFIG.DEFAULT_INFERENCE_STEPS,
+        guidance_scale: IMAGE_CONFIG.DEFAULT_GUIDANCE_SCALE,
       } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
     })) as { data: { images: Array<{ url: string }>; seed: number } };
 
@@ -40,13 +42,13 @@ export async function generateImage(
     };
   } else {
     // text2img — Bloom Map stylized sketch
-    const result = (await fal.subscribe('fal-ai/flux-pro/v1.1', {
+    const result = (await fal.subscribe(IMAGE_CONFIG.FAL_MODEL, {
       input: {
         prompt,
-        num_images: 1,
-        image_size: 'landscape_16_9',
-        num_inference_steps: 28,
-        guidance_scale: 3.5,
+        num_images: IMAGE_CONFIG.NUM_IMAGES,
+        image_size: IMAGE_CONFIG.DEFAULT_IMAGE_SIZE,
+        num_inference_steps: IMAGE_CONFIG.DEFAULT_INFERENCE_STEPS,
+        guidance_scale: IMAGE_CONFIG.DEFAULT_GUIDANCE_SCALE,
       } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
     })) as { data: { images: Array<{ url: string }>; seed: number } };
 
@@ -60,6 +62,11 @@ export async function generateImage(
 /**
  * Generate a stylized sketch for the Bloom Map
  * Uses a deliberately artistic, non-photorealistic style
+ * 
+ * @param plantSpecies - Array of plant species names
+ * @param containerTypes - Array of container type descriptions
+ * @param arrangementPattern - Description of plant arrangement
+ * @returns Generated sketch URL and seed
  */
 export async function generateBloomSketch(
   plantSpecies: string[],
