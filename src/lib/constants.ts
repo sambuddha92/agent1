@@ -36,6 +36,7 @@ export const AUTH_ROUTES = [ROUTES.LOGIN, ROUTES.SIGNUP, ROUTES.FORGOT_PASSWORD,
 
 export const API_ENDPOINTS = {
   CHAT: '/api/chat',
+  CONVERSATIONS: '/api/conversations',
   WEATHER_CHECK: '/api/cron/weather-check',
 } as const;
 

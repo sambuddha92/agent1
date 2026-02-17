@@ -125,112 +125,61 @@ export async function getUserContext(userId: string): Promise<UserContext | null
 // ============================================
 
 /**
- * Build a human-readable summary of user context for AI injection
- * Converts structured data into natural language the AI can understand
+ * Build a concise context summary for AI injection
+ * Prioritizes actionable info, omits details AI doesn't need
  * 
  * @param context - User context object
  * @returns Formatted context summary string
  */
 export function buildContextSummary(context: UserContext): string {
-  const sections: string[] = [];
+  const lines: string[] = [];
 
-  // User profile
-  if (context.user) {
-    const userInfo: string[] = [];
-    if (context.user.full_name) userInfo.push(`Name: ${context.user.full_name}`);
-    if (context.user.city) userInfo.push(`Location: ${context.user.city}`);
-    if (userInfo.length > 0) {
-      sections.push(`USER PROFILE:\n${userInfo.join(', ')}`);
-    }
+  // User location (helps with weather/plant recs)
+  if (context.user?.city) {
+    lines.push(`📍 ${context.user.city}`);
   }
 
-  // Balconies/Growing spaces
+  // Quick balcony facts (MOST important - drives all advice)
   if (context.balconies.length > 0) {
-    const balconyDescriptions = context.balconies.map(b => {
-      const details: string[] = [b.name];
-      if (b.orientation) details.push(`${b.orientation}-facing`);
-      if (b.dimensions_m2) details.push(`${b.dimensions_m2}m²`);
-      if (b.floor_level !== null && b.floor_level !== undefined) {
-        details.push(`floor ${b.floor_level}`);
-      }
-      if (b.sun_hours_estimated) details.push(`~${b.sun_hours_estimated}h sun/day`);
-      if (b.wind_exposure) details.push(`${b.wind_exposure} wind`);
-      if (b.climate_zone) details.push(`${b.climate_zone} climate`);
-      return `- ${details.join(', ')}`;
+    context.balconies.slice(0, 2).forEach(b => {
+      const facts = [];
+      if (b.orientation) facts.push(b.orientation);
+      if (b.sun_hours_estimated) facts.push(`${b.sun_hours_estimated}h sun`);
+      if (b.wind_exposure) facts.push(b.wind_exposure);
+      if (facts.length) lines.push(`🪴 ${b.name}: ${facts.join(', ')}`);
     });
-    sections.push(`GROWING SPACES:\n${balconyDescriptions.join('\n')}`);
   }
 
-  // Active plants
+  // Just plant names + status (don't need all details)
   if (context.plants.length > 0) {
-    const plantList = context.plants.map(p => {
-      const parts: string[] = [];
-      if (p.nickname) parts.push(`"${p.nickname}"`);
-      parts.push(p.species);
-      if (p.variety) parts.push(`(${p.variety})`);
-      if (p.container_size_liters) parts.push(`${p.container_size_liters}L container`);
-      if (p.position_description) parts.push(p.position_description);
-      return `- ${parts.join(' ')}`;
-    });
-    sections.push(`ACTIVE PLANTS (${context.plants.length}):\n${plantList.join('\n')}`);
+    const plantNames = context.plants
+      .slice(0, 5)
+      .map(p => p.nickname || p.species)
+      .join(', ');
+    lines.push(`🌱 Plants: ${plantNames}${context.plants.length > 5 ? ' +more' : ''}`);
   }
 
-  // Recent health observations
+  // Only flag serious issues
   if (context.recentHealthSnapshots.length > 0) {
-    const healthNotes: string[] = [];
-    const issuesFound = context.recentHealthSnapshots
-      .filter(s => s.health_score && s.health_score < 70)
-      .slice(0, 3);
-    
-    if (issuesFound.length > 0) {
-      healthNotes.push('Recent health concerns detected on some plants');
-    }
-    
-    if (healthNotes.length > 0) {
-      sections.push(`RECENT OBSERVATIONS:\n${healthNotes.join('\n')}`);
+    const critical = context.recentHealthSnapshots.filter(s => s.health_score && s.health_score < 50);
+    if (critical.length > 0) {
+      lines.push(`⚠️ Health alerts: ${critical.length} plant(s) in trouble`);
     }
   }
 
-  // Accumulated memories (grouped by type)
+  // User preferences/goals (drives style of advice)
   if (context.memories.length > 0) {
-    const memoryGroups: Record<string, string[]> = {};
-    
-    context.memories.forEach(m => {
-      if (!memoryGroups[m.memory_type]) {
-        memoryGroups[m.memory_type] = [];
-      }
-      memoryGroups[m.memory_type].push(`- ${m.memory_value}`);
-    });
-
-    const memoryLines: string[] = [];
-    if (memoryGroups.preference) {
-      memoryLines.push('Preferences:', ...memoryGroups.preference);
-    }
-    if (memoryGroups.goal) {
-      memoryLines.push('Goals:', ...memoryGroups.goal);
-    }
-    if (memoryGroups.constraint) {
-      memoryLines.push('Constraints:', ...memoryGroups.constraint);
-    }
-    if (memoryGroups.context) {
-      memoryLines.push('Context:', ...memoryGroups.context);
-    }
-    if (memoryGroups.observation) {
-      memoryLines.push('Patterns:', ...memoryGroups.observation);
-    }
-
-    if (memoryLines.length > 0) {
-      sections.push(`LEARNED ABOUT USER:\n${memoryLines.join('\n')}`);
-    }
+    const key = context.memories.slice(0, 2).map(m => m.memory_value).join('; ');
+    if (key) lines.push(`💭 ${key}`);
   }
 
-  // If no context available
-  if (sections.length === 0) {
-    return 'No spatial context or plant data available yet. This appears to be a new user.';
+  if (lines.length === 0) {
+    return 'New user - no context yet';
   }
 
-  return sections.join('\n\n');
+  return lines.join('\n');
 }
+
 
 // ============================================
 // Memory Accumulation

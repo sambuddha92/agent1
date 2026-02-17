@@ -193,6 +193,29 @@ export interface WeatherForecast {
 }
 
 // ============================================
+// Conversation History Types
+// ============================================
+
+export interface Conversation {
+  id: string;
+  user_id: string;
+  title: string | null;
+  summary: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  role: MessageRole;
+  content: string;
+  model_id: string | null;
+  tier: string | null;
+  created_at: string;
+}
+
+// ============================================
 // AI & Chat Types
 // ============================================
 

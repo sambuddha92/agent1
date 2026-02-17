@@ -19,6 +19,12 @@ export {
   rememberExplicitStatement,
 } from './extraction';
 
+export {
+  extractInteractionInsights,
+  analyzeConversationPatterns,
+  determineInteractionStyle,
+} from './personalized-extraction';
+
 export type {
   UserContext,
   UserContextMemory,

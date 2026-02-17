@@ -15,44 +15,28 @@ import type { Message } from '@/types';
 // Memory Extraction Prompt
 // ============================================
 
-const MEMORY_EXTRACTION_PROMPT = `You are a memory extraction system for FloatGreens, an AI plant care assistant.
+const MEMORY_EXTRACTION_PROMPT = `Extract key facts from this conversation. Return JSON ONLY.
 
-Your job is to analyze conversations and extract important facts about the user that should be remembered for future personalization.
+Categories:
+- preference: What they like/dislike (organic methods, colorful plants, etc)
+- constraint: Limitations (time, space, travel, pets, etc)
+- goal: What they want to achieve
+- observation: Behavioral patterns (overwatering, detail-focused, etc)
+- interaction: Communication/interaction preferences (brief responses, technical depth, etc)
+- success: Successful outcomes or approaches
+- context: Background info (work from home, has cats, etc)
 
-Extract memories in these categories:
-- preference: User preferences (e.g., "prefers organic methods", "likes colorful flowers")
-- constraint: Physical or time constraints (e.g., "limited time for maintenance", "travels frequently")
-- goal: User goals (e.g., "wants to grow herbs for cooking", "aims for aesthetic balcony")
-- observation: Behavioral patterns (e.g., "tends to overwater", "very detail-oriented")
-- success: Successful outcomes (e.g., "tomatoes thrived with weekly feeding")
-- failure: Failed attempts (e.g., "basil died from overwatering last summer")
-- context: General context (e.g., "works from home", "has cats", "vegetarian")
+Rules:
+1. Only extract explicit/strongly implied facts
+2. Be specific and actionable
+3. Skip temporary states
+4. Prioritize INTERACTION patterns (communication style, detail preference, engagement level)
+5. Return empty array [] if nothing found
 
-IMPORTANT RULES:
-1. Only extract facts explicitly stated or strongly implied in the conversation
-2. Be specific and actionable - avoid vague statements
-3. Focus on information that will help personalize future advice
-4. Don't extract temporary states (e.g., "is watering plants right now")
-5. Return ONLY valid JSON, no markdown formatting
-6. If no meaningful memories found, return empty array
+Format: [{"memoryType":"preference","memoryKey":"key","memoryValue":"clear statement","confidence":0.9}]
 
-Output format (JSON array only):
-[
-  {
-    "memoryType": "preference",
-    "memoryKey": "watering_approach",
-    "memoryValue": "Prefers to water deeply once a week rather than frequent light watering",
-    "confidence": 0.9
-  },
-  {
-    "memoryType": "goal",
-    "memoryKey": "growing_purpose",
-    "memoryValue": "Wants to grow herbs for cooking, especially basil and mint",
-    "confidence": 1.0
-  }
-]
+Conversation:`;
 
-Analyze the following conversation and extract memories:`;
 
 // ============================================
 // Extraction Logic
@@ -125,6 +109,25 @@ export async function extractMemoriesFromConversation(
     // Store extracted memories
     const stored = await addUserMemories(userId, memories);
     console.log(`[memory-extraction] Extracted and stored ${stored}/${memories.length} memories for user ${userId}`);
+    
+    // Also extract interaction insights (communication patterns that refine behavior)
+    // These are supplementary to the AI extraction and capture behavioral patterns
+    const { extractInteractionInsights } = await import('./personalized-extraction');
+    
+    // Convert Message type to simple format for interaction insights
+    const simpleMessages = messages.map(m => ({
+      role: m.role,
+      content: typeof m.content === 'string' ? m.content : 
+        m.content.map(c => c.type === 'text' ? c.text : '[image]').join(' '),
+    }));
+    
+    const interactionInsights = extractInteractionInsights(simpleMessages);
+    
+    if (interactionInsights.length > 0) {
+      const interactionStored = await addUserMemories(userId, interactionInsights);
+      console.log(`[memory-extraction] Extracted and stored ${interactionStored} interaction insights for user ${userId}`);
+      return stored + interactionStored;
+    }
     
     return stored;
   } catch (error) {
