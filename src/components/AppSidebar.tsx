@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ROUTES, UI_TEXT } from '@/lib/constants';
@@ -14,25 +14,72 @@ import {
   Trash2,
   X,
   MessageSquare,
+  PanelLeftClose,
+  Clock,
 } from 'lucide-react';
+
+interface ConversationItem {
+  id: string;
+  title: string;
+  summary?: string;
+  updated_at: string;
+}
 
 interface AppSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   userEmail?: string;
   userName?: string;
-  conversations?: Array<{
-    id: string;
-    title: string;
-    summary?: string;
-    updated_at: string;
-  }>;
+  conversations?: ConversationItem[];
   currentConversationId?: string | null;
   onNewChat?: () => void;
   onLoadConversation?: (id: string) => void;
   onDeleteConversation?: (id: string, e: React.MouseEvent) => void;
   isLoadingUser?: boolean;
   isLoadingConversations?: boolean;
+}
+
+// Date grouping helper functions
+function getDateGroup(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const monthAgo = new Date(today);
+  monthAgo.setDate(monthAgo.getDate() - 30);
+
+  if (date >= today) return 'Today';
+  if (date >= yesterday) return 'Yesterday';
+  if (date >= weekAgo) return 'Previous 7 Days';
+  if (date >= monthAgo) return 'Previous 30 Days';
+  return 'Older';
+}
+
+function groupConversationsByDate(conversations: ConversationItem[]): Map<string, ConversationItem[]> {
+  const groups = new Map<string, ConversationItem[]>();
+  const order = ['Today', 'Yesterday', 'Previous 7 Days', 'Previous 30 Days', 'Older'];
+  
+  // Initialize groups in order
+  order.forEach(group => groups.set(group, []));
+  
+  conversations.forEach(conv => {
+    const group = getDateGroup(conv.updated_at);
+    const existing = groups.get(group) || [];
+    existing.push(conv);
+    groups.set(group, existing);
+  });
+  
+  // Remove empty groups
+  order.forEach(group => {
+    if (groups.get(group)?.length === 0) {
+      groups.delete(group);
+    }
+  });
+  
+  return groups;
 }
 
 export default function AppSidebar({
@@ -52,27 +99,53 @@ export default function AppSidebar({
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Helper to check if we're on mobile viewport (< 1024px)
+  const isMobileViewport = () => typeof window !== 'undefined' && window.innerWidth < 1024;
+
+  // Only close sidebar on mobile, keep open on desktop
+  const closeSidebarOnMobile = () => {
+    if (isMobileViewport()) {
+      onClose();
+    }
+  };
+
   const handleConversationClick = (id: string) => {
     if (onLoadConversation) {
       onLoadConversation(id);
     }
-    onClose();
+    // Only close on mobile - keep sidebar open on desktop
+    closeSidebarOnMobile();
+  };
+
+  const handleConversationKeyDown = (id: string, e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleConversationClick(id);
+    }
   };
 
   const handleNewChat = () => {
     if (onNewChat) {
       onNewChat();
     }
-    onClose();
+    // Only close on mobile - keep sidebar open on desktop
+    closeSidebarOnMobile();
   };
 
-  const filteredConversations = conversations.filter(conversation => {
-    const query = searchQuery.toLowerCase();
-    return (
-      conversation.title.toLowerCase().includes(query) ||
-      (conversation.summary && conversation.summary.toLowerCase().includes(query))
-    );
-  });
+  const filteredConversations = useMemo(() => {
+    return conversations.filter(conversation => {
+      const query = searchQuery.toLowerCase();
+      return (
+        conversation.title.toLowerCase().includes(query) ||
+        (conversation.summary && conversation.summary.toLowerCase().includes(query))
+      );
+    });
+  }, [conversations, searchQuery]);
+
+  // Group conversations by date
+  const groupedConversations = useMemo(() => {
+    return groupConversationsByDate(filteredConversations);
+  }, [filteredConversations]);
 
   const isGarden = pathname === ROUTES.GARDEN;
 
@@ -81,81 +154,85 @@ export default function AppSidebar({
       {/* Backdrop for mobile */}
       {isOpen && (
         <div
-          className="app-sidebar-backdrop lg:hidden"
+          className="sidebar-backdrop lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
-      <aside className={`app-sidebar ${isOpen ? 'open' : ''}`}>
+      <aside className={`sidebar-container ${isOpen ? 'open' : ''}`}>
         {/* Fixed Top Section */}
-        <div className="sidebar-fixed-section">
-          {/* App Branding - Minimalist */}
-          <div className="px-4 py-6 border-b border-white/10">
-            <Link href={ROUTES.CHAT} className="flex items-center gap-2 group" onClick={onClose}>
-              <Leaf className="icon-xl text-white group-hover:animate-pulse-soft flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <h2 className="font-display text-lg font-bold text-white truncate">{UI_TEXT.APP_NAME}</h2>
+        <div className="sidebar-header-section">
+          {/* App Branding with Close Button */}
+          <div className="sidebar-branding">
+            <Link href={ROUTES.CHAT} className="sidebar-logo-link" onClick={closeSidebarOnMobile}>
+              <div className="sidebar-logo-icon">
+                <Leaf className="w-5 h-5 text-white" />
               </div>
+              <span className="sidebar-logo-text">{UI_TEXT.APP_NAME}</span>
             </Link>
+            
+            {/* Close/Collapse Button - Always Visible */}
+            <button
+              onClick={onClose}
+              className="sidebar-close-btn"
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+            >
+              <PanelLeftClose className="w-5 h-5" />
+            </button>
           </div>
 
-          {/* Primary Navigation - ChatGPT Style */}
-          <div className="px-3 py-4 space-y-2 border-b border-white/10">
-            {/* New Chat Button */}
+          {/* Primary Navigation */}
+          <div className="sidebar-nav">
+            {/* New Chat Button - Premium Style */}
             <button
               onClick={handleNewChat}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-white/15 hover:bg-white/20 rounded-lg transition-all font-medium text-white text-sm active-press"
+              className="sidebar-new-chat-btn"
               aria-label="Start new chat"
             >
-              <Plus className="icon-lg text-white flex-shrink-0" />
-              <span className="truncate">New Chat</span>
+              <Plus className="w-4 h-4" />
+              <span>New Chat</span>
             </button>
 
-            {/* Primary Nav Items - Clean Single Line */}
+            {/* Garden Link */}
             <Link
               href={ROUTES.GARDEN}
-              onClick={onClose}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium truncate ${
-                isGarden
-                  ? 'bg-white/15 text-white'
-                  : 'text-white/80 hover:bg-white/10 hover:text-white'
-              }`}
+              onClick={closeSidebarOnMobile}
+              className={`sidebar-nav-link ${isGarden ? 'active' : ''}`}
             >
-              <ImageIcon className="icon-md text-white flex-shrink-0" />
-              <span className="truncate">My Garden</span>
+              <ImageIcon className="w-4 h-4" />
+              <span>My Garden</span>
             </Link>
-
           </div>
         </div>
 
         {/* Scrollable Section - Conversation History */}
-        <div className="sidebar-scrollable-section">
-          <div className="px-3 py-4">
-            {/* Section Header - Uppercase, Muted (ChatGPT Style) */}
-            <div className="flex items-center justify-between mb-3 px-4">
-              <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wide">
-                Chats
-              </h3>
+        <div className="sidebar-content">
+          <div className="sidebar-section-inner">
+            {/* Section Header */}
+            <div className="sidebar-section-header">
+              <h3 className="sidebar-section-title">History</h3>
               {!showSearch && conversations.length > 0 && (
                 <button
                   onClick={() => setShowSearch(true)}
-                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                  className="sidebar-search-toggle"
                   aria-label="Search chats"
                   title="Search"
                 >
-                  <Search className="icon-sm text-white/40 hover:text-white/60" />
+                  <Search className="w-4 h-4" />
                 </button>
               )}
             </div>
 
             {/* Search Bar */}
             {showSearch && (
-              <div className="relative mx-4 mb-4 group transition-all duration-200 animate-scale-in">
+              <div className="sidebar-search-container animate-scale-in">
+                <Search className="sidebar-search-icon" />
                 <input
                   type="text"
-                  placeholder="Search..."
+                  placeholder="Search conversations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -164,7 +241,7 @@ export default function AppSidebar({
                       setSearchQuery('');
                     }
                   }}
-                  className="w-full px-3 py-2 bg-white/15 text-white rounded-md placeholder:text-white/40 text-xs focus:outline-none focus:ring-2 focus:ring-white/30 focus:bg-white/20 transition-all"
+                  className="sidebar-search-input"
                   autoFocus
                 />
                 <button
@@ -172,58 +249,77 @@ export default function AppSidebar({
                     setShowSearch(false);
                     setSearchQuery('');
                   }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-white/10 rounded transition-colors"
+                  className="sidebar-search-clear"
                   aria-label="Close search"
                 >
-                  <X className="icon-sm text-white/40 hover:text-white/70" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
 
             {/* Conversation List */}
-            <div className="space-y-1">
+            <div className="sidebar-conversation-list">
               {isLoadingConversations ? (
                 <SidebarConversationListSkeleton count={4} />
               ) : filteredConversations.length === 0 ? (
-                <div className="px-4 py-8 text-center animate-fade-in">
-                  <MessageSquare className="icon-md text-white/20 mx-auto mb-2" />
-                  <p className="text-xs text-white/40">
-                    {searchQuery ? 'No matches' : 'No chats yet'}
+                <div className="sidebar-empty-state">
+                  <div className="sidebar-empty-icon">
+                    <MessageSquare className="w-6 h-6" />
+                  </div>
+                  <p className="sidebar-empty-text">
+                    {searchQuery ? 'No matching conversations' : 'No conversations yet'}
+                  </p>
+                  <p className="sidebar-empty-subtext">
+                    {searchQuery ? 'Try a different search term' : 'Start a new chat to begin'}
                   </p>
                 </div>
               ) : (
-                <div className="animate-fade-in">
-                  {filteredConversations.map((conversation) => (
-                    <button
-                      key={conversation.id}
-                      onClick={() => handleConversationClick(conversation.id)}
-                      className={`w-full flex items-start gap-2 px-3 py-2.5 rounded-md transition-all text-left group overflow-hidden ${
-                        conversation.id === currentConversationId
-                          ? 'bg-white/15 text-white'
-                          : 'text-white/70 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <div className="flex-1 min-w-0 mt-0.5">
-                        <p className="text-xs font-medium truncate leading-snug">
-                          {conversation.title || 'Untitled'}
-                        </p>
-                        {conversation.summary && (
-                          <p className="text-xs text-white/50 mt-0.5 line-clamp-1">
-                            {conversation.summary}
-                          </p>
-                        )}
+                <div className="sidebar-groups animate-fade-in">
+                  {Array.from(groupedConversations.entries()).map(([group, convs]) => (
+                    <div key={group} className="sidebar-group">
+                      <div className="sidebar-group-header">
+                        <Clock className="w-3 h-3" />
+                        <span>{group}</span>
                       </div>
-                      {onDeleteConversation && (
-                        <button
-                          onClick={(e) => onDeleteConversation(conversation.id, e)}
-                          className="flex-shrink-0 p-1.5 rounded hover:bg-red-500/20 text-white/30 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-all"
-                          aria-label="Delete conversation"
-                          title="Delete"
-                        >
-                          <Trash2 className="icon-xs" />
-                        </button>
-                      )}
-                    </button>
+                      <div className="sidebar-group-items">
+                        {convs.map((conversation) => (
+                          <div
+                            key={conversation.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => handleConversationClick(conversation.id)}
+                            onKeyDown={(e) => handleConversationKeyDown(conversation.id, e)}
+                            className={`sidebar-conversation-item ${
+                              conversation.id === currentConversationId ? 'active' : ''
+                            }`}
+                          >
+                            <div className="sidebar-conversation-content">
+                              <p className="sidebar-conversation-title">
+                                {conversation.title || 'Untitled'}
+                              </p>
+                              {conversation.summary && (
+                                <p className="sidebar-conversation-summary">
+                                  {conversation.summary}
+                                </p>
+                              )}
+                            </div>
+                            {onDeleteConversation && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeleteConversation(conversation.id, e);
+                                }}
+                                className="sidebar-delete-btn"
+                                aria-label="Delete conversation"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}

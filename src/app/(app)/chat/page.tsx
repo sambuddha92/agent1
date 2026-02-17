@@ -8,9 +8,16 @@ import { Plus, SendHorizontal, X, Camera, Upload, Loader2, Bot } from 'lucide-re
 import { uploadImageClient } from '@/lib/supabase/image-client';
 import { createClient } from '@/lib/supabase/client';
 import ModelSelector from '@/components/ModelSelector';
+import { ChatImage } from '@/components/ChatImage';
+import { ChatMessagesSkeleton } from '@/components/Skeletons';
 import { useModelSelector } from '@/hooks/useModelSelector';
 import { resolveUserTier } from '@/lib/ai/model-resolver';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
+
+// Simple in-memory cache for loaded conversations
+// Persists across navigation but clears on page refresh
+const conversationCache = new Map<string, { messages: Message[]; timestamp: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 function ChatPageContent() {
   const searchParams = useSearchParams();
@@ -22,6 +29,7 @@ function ChatPageContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [uploadedImages, setUploadedImages] = useState<Array<{ image: ImageType; file: File }>>([]);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
@@ -84,6 +92,20 @@ function ChatPageContent() {
   }, [showPlusMenu]);
 
   const loadConversation = useCallback(async (conversationId: string) => {
+    // Check cache first for instant loading
+    const cached = conversationCache.get(conversationId);
+    const now = Date.now();
+    
+    if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
+      // Cache hit - instant load
+      setMessages(cached.messages);
+      setCurrentConversationId(conversationId);
+      return;
+    }
+
+    // Cache miss - show skeleton and fetch
+    setIsLoadingConversation(true);
+    
     try {
       const response = await fetch(`${API_ENDPOINTS.CONVERSATIONS}/${conversationId}`);
       if (response.ok) {
@@ -96,11 +118,20 @@ function ChatPageContent() {
           tier: msg.tier as Message['tier'],
           imageUrl: msg.image_url || undefined,
         }));
+        
+        // Update cache
+        conversationCache.set(conversationId, {
+          messages: displayMessages,
+          timestamp: now,
+        });
+        
         setMessages(displayMessages);
         setCurrentConversationId(conversationId);
       }
     } catch (error) {
       console.error('[chat] Error loading conversation:', error);
+    } finally {
+      setIsLoadingConversation(false);
     }
   }, []);
 
@@ -259,8 +290,13 @@ function ChatPageContent() {
     <div className="flex flex-col h-full w-full bg-gradient-to-br from-surface via-background to-surface">
       {/* Messages Area */}
       <div className="chat-messages flex-1 overflow-y-auto">
+        {/* Loading Skeleton for Conversation History */}
+        {isLoadingConversation && (
+          <ChatMessagesSkeleton count={4} />
+        )}
+
         {/* Empty State */}
-        {messages.length === 0 && (
+        {messages.length === 0 && !isLoadingConversation && !conversationIdFromUrl && (
           <div className="flex flex-col justify-center items-center h-full px-6 animate-fade-in">
             {/* Model selector in empty state header */}
             <div className="flex items-center gap-2 mb-6">
@@ -304,15 +340,12 @@ function ChatPageContent() {
                         ? message.imageUrls
                         : message.imageUrl ? [message.imageUrl] : []
                       ).map((url, _idx) => (
-                        <div key={_idx} className="mb-3 rounded-lg overflow-hidden bg-black/10 relative w-fit">
-                          <Image
-                            src={url}
-                            alt={`Shared image ${_idx + 1}`}
-                            width={400}
-                            height={256}
-                            className="max-w-xs h-auto object-cover max-h-64"
-                          />
-                        </div>
+                        <ChatImage
+                          key={_idx}
+                          src={url}
+                          alt={`Shared image ${_idx + 1}`}
+                          index={_idx}
+                        />
                       ))}
                     </>
                   )}

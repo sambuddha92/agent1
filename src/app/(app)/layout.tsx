@@ -6,12 +6,14 @@ import { getCurrentUser } from '@/lib/auth/actions';
 import { API_ENDPOINTS } from '@/lib/constants';
 import MobileHeader from '@/components/MobileHeader';
 import AppSidebar from '@/components/AppSidebar';
+import { PanelLeftOpen } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import type { Conversation } from '@/types';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // Initialize sidebar as open on desktop (lg: 1024px+)
+  const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
@@ -129,6 +131,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="app-main">
+        {/* Sidebar re-open toggle - only visible when sidebar is collapsed on desktop */}
+        {!isMenuOpen && (
+          <button
+            onClick={handleMenuToggle}
+            className="sidebar-reopen-btn"
+            aria-label="Open sidebar"
+            title="Open sidebar"
+          >
+            <PanelLeftOpen className="w-5 h-5" />
+          </button>
+        )}
         {children}
       </main>
     </div>

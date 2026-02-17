@@ -3,25 +3,45 @@
 /**
  * ModelSelector Component
  *
- * Dropdown selector for choosing AI model preference per conversation.
- * Renders in the chat header area.
+ * Dropdown selector for choosing AI mode preference per conversation.
+ * Renders in the chat header area with eco-friendly framing around token usage.
  *
- * Options:
- *   AUTO (Recommended) — dynamic selection based on task complexity
- *   Fast              — Tier 1, cheapest/fastest
- *   Balanced          — Tier 2, quality + cost tradeoff
- *   Best Quality      — Tier 3, locked for free users
+ * Options (eco-friendly labels):
+ *   AUTO (Recommended) — adapts to your question, efficient by default
+ *   Eco               — Tier 1, fewest tokens, lightest footprint
+ *   Balanced          — Tier 2, good answers, reasonable usage
+ *   Power             — Tier 3, maximum tokens, locked for free users
  *
  * Locked options:
  *   - Visible but disabled
  *   - Show lock icon
- *   - Show "Upgrade" button that logs interest + shows "Coming Soon" modal
+ *   - Show "Upgrade" button that logs interest + shows "Growing Soon" modal
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Lock, ChevronDown, X, Sparkles } from 'lucide-react';
+import { Lock, ChevronDown, X, Sparkles, Leaf, Scale, Zap } from 'lucide-react';
 import type { ModelPreference, UserTier } from '@/types';
 import type { UseModelSelectorReturn } from '@/hooks/useModelSelector';
+
+// ============================================
+// Icon Mapping
+// ============================================
+
+const BADGE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  sparkles: Sparkles,
+  leaf: Leaf,
+  scale: Scale,
+  zap: Zap,
+};
+
+function BadgeIcon({ badge, className }: { badge: string; className?: string }) {
+  const Icon = BADGE_ICONS[badge];
+  if (Icon) {
+    return <Icon className={className} />;
+  }
+  // Fallback to text (for any legacy emoji badges)
+  return <span className={className}>{badge}</span>;
+}
 
 // ============================================
 // Types
@@ -86,10 +106,10 @@ function ComingSoonModal({ onClose }: { onClose: () => void }) {
           id="coming-soon-title"
           className="font-display text-xl font-semibold text-[var(--color-text-primary)] mb-2"
         >
-          Coming Soon ✨
+          Growing Soon
         </h3>
         <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-4">
-          Premium model access is coming to FloatGreens. We&apos;ve noted your interest — you&apos;ll be among the first to know when it launches!
+          Power mode is coming — we&apos;ve noted your interest! In the meantime, Eco and Balanced modes are kinder to the planet while still helping your garden thrive.
         </p>
 
         {/* CTA */}
@@ -98,7 +118,7 @@ function ComingSoonModal({ onClose }: { onClose: () => void }) {
           className="w-full btn-primary text-sm py-3"
           style={{ minHeight: '2.75rem' }}
         >
-          Got it 🌿
+          Got it
         </button>
       </div>
     </div>
@@ -147,7 +167,9 @@ function OptionRow({
       aria-disabled={locked}
     >
       {/* Badge */}
-      <span className="text-base flex-shrink-0 w-6 text-center">{badge}</span>
+      <span className="flex-shrink-0 w-6 flex items-center justify-center">
+        <BadgeIcon badge={badge} className="w-4 h-4" />
+      </span>
 
       {/* Text */}
       <div className="flex-1 min-w-0">
@@ -264,7 +286,7 @@ export default function ModelSelector({
           aria-expanded={isOpen}
           aria-label={`Model: ${currentOption?.label ?? 'AUTO'}`}
         >
-          <span className="text-base leading-none">{currentOption?.badge ?? '🤖'}</span>
+          <BadgeIcon badge={currentOption?.badge ?? 'sparkles'} className="w-4 h-4" />
           <span className="hidden sm:inline text-xs font-semibold tracking-wide uppercase">
             {currentOption?.label ?? 'AUTO'}
           </span>
@@ -288,7 +310,7 @@ export default function ModelSelector({
             {/* Header */}
             <div className="px-3 pt-3 pb-2 border-b border-[var(--color-border)]">
               <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                AI Model
+                AI Mode
               </p>
             </div>
 
@@ -316,8 +338,8 @@ export default function ModelSelector({
             <div className="px-3 py-2 border-t border-[var(--color-border)]">
               <p className="text-xs text-[var(--color-text-muted)] leading-snug">
                 {userTier === 'paid'
-                  ? '✅ All models available'
-                  : '🔒 Best Quality available for paid users'}
+                  ? 'All modes unlocked'
+                  : 'Power mode available for supporters'}
               </p>
             </div>
           </div>

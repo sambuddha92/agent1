@@ -151,6 +151,7 @@ export async function deleteConversation(
 
 /**
  * Get all messages for a conversation, ordered chronologically
+ * Uses a single query with ownership check via join to reduce round trips
  */
 export async function getConversationMessages(
   conversationId: string,
@@ -158,17 +159,16 @@ export async function getConversationMessages(
 ): Promise<ChatMessage[]> {
   const supabase = createServiceClient();
 
-  // Verify ownership first
-  const conversation = await getConversation(conversationId, userId);
-  if (!conversation) {
-    console.error('[conversations] Conversation not found or unauthorized');
-    return [];
-  }
-
+  // Single query: verify ownership AND fetch messages in one round trip
+  // Uses inner join to ensure conversation belongs to user
   const { data, error } = await supabase
     .from('chat_messages')
-    .select('*')
+    .select(`
+      *,
+      conversations!inner(id, user_id)
+    `)
     .eq('conversation_id', conversationId)
+    .eq('conversations.user_id', userId)
     .order('created_at', { ascending: true });
 
   if (error) {
@@ -176,7 +176,9 @@ export async function getConversationMessages(
     return [];
   }
 
-  return data as ChatMessage[];
+  // Strip the joined conversation data from each message
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  return (data || []).map(({ conversations, ...msg }) => msg as ChatMessage);
 }
 
 /**

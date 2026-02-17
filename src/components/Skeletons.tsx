@@ -27,6 +27,46 @@ export function MessageSkeleton() {
 }
 
 /**
+ * Chat message list skeleton - shows while loading conversation history
+ */
+export function ChatMessagesSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="chat-content max-w-4xl mx-auto animate-fade-in">
+      {Array.from({ length: count }).map((_, i) => {
+        // Alternate between user (right) and assistant (left) messages
+        const isUser = i % 2 === 0;
+        return (
+          <div
+            key={i}
+            className={`chat-message-row ${isUser ? 'justify-end' : 'justify-start'}`}
+            style={{ animationDelay: `${i * 50}ms` }}
+          >
+            <div
+              className={`animate-pulse rounded-2xl ${
+                isUser
+                  ? 'bg-primary/20 ml-auto'
+                  : 'bg-surface-elevated mr-auto'
+              }`}
+              style={{
+                width: `${Math.random() * 30 + 40}%`,
+                minWidth: '120px',
+                maxWidth: '320px',
+              }}
+            >
+              <div className="p-4 space-y-2">
+                <div className={`h-3 rounded ${isUser ? 'bg-primary/30' : 'bg-gray-300'} w-full`}></div>
+                <div className={`h-3 rounded ${isUser ? 'bg-primary/30' : 'bg-gray-300'} w-4/5`}></div>
+                {!isUser && <div className="h-3 rounded bg-gray-300 w-3/5"></div>}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
  * Image grid skeleton - mimics a grid of loading images
  */
 export function ImageGridSkeleton({ count = 12 }: { count?: number }) {

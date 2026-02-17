@@ -59,9 +59,9 @@ export const MODEL_TIER_CONFIG: Record<Exclude<ModelPreference, 'auto'>, ModelTi
     primaryModelId: MODEL_CONFIG.T1_FALLBACK,   // amazon.nova-lite-v1:0 — cheapest/fastest
     fallbackModelId: MODEL_CONFIG.T1_MODEL,      // amazon.nova-pro-v1:0  — fallback
     display: {
-      label: 'Fast',
-      description: 'Quick responses, best for simple questions',
-      badge: '⚡',
+      label: 'Eco',
+      description: 'Fewest tokens, lightest footprint',
+      badge: 'leaf',
       freeAccess: true,
     },
   },
@@ -71,8 +71,8 @@ export const MODEL_TIER_CONFIG: Record<Exclude<ModelPreference, 'auto'>, ModelTi
     fallbackModelId: MODEL_CONFIG.T2_FALLBACK,   // amazon.nova-pro-v1:0
     display: {
       label: 'Balanced',
-      description: 'Best mix of quality and speed',
-      badge: '⚖️',
+      description: 'Good answers, reasonable usage',
+      badge: 'scale',
       freeAccess: true,
     },
   },
@@ -81,9 +81,9 @@ export const MODEL_TIER_CONFIG: Record<Exclude<ModelPreference, 'auto'>, ModelTi
     primaryModelId: MODEL_CONFIG.T3_MODEL,            // claude-3-5-sonnet
     fallbackModelId: MODEL_CONFIG.T3_FALLBACK,        // claude-3-5-haiku (fallback)
     display: {
-      label: 'Best Quality',
-      description: 'Most capable model for complex tasks',
-      badge: '✨',
+      label: 'Power',
+      description: 'Maximum tokens for complex tasks',
+      badge: 'zap',
       freeAccess: false,  // Paid users only
     },
   },
@@ -91,8 +91,8 @@ export const MODEL_TIER_CONFIG: Record<Exclude<ModelPreference, 'auto'>, ModelTi
 
 export const AUTO_DISPLAY_META: TierDisplayMeta = {
   label: 'AUTO',
-  description: 'Automatically selects the best model for your task',
-  badge: '🤖',
+  description: 'Adapts to your question — efficient by default',
+  badge: 'sparkles',
   freeAccess: true,
 };
 
