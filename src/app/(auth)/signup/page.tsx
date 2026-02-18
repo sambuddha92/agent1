@@ -155,7 +155,7 @@ export default function SignupPage() {
             Start Growing
           </h1>
           <p className="text-text-secondary text-base sm:text-lg leading-relaxed">
-            Create your account and join thousands of successful gardeners
+            {UI_TEXT.AUTH_SIGNUP_TITLE}
           </p>
         </div>
 
@@ -232,7 +232,7 @@ export default function SignupPage() {
 
             <div>
               <label htmlFor="email" className="label">
-                Email Address
+                {UI_TEXT.AUTH_EMAIL_LABEL}
               </label>
               <input
                 id="email"
@@ -242,13 +242,13 @@ export default function SignupPage() {
                 required
                 autoComplete="email"
                 className="input"
-                placeholder="you@example.com"
+                placeholder={UI_TEXT.AUTH_EMAIL_PLACEHOLDER}
               />
             </div>
 
             <div>
               <label htmlFor="password" className="label">
-                Password
+                {UI_TEXT.AUTH_PASSWORD_LABEL}
               </label>
               <div className="relative">
                 <input
@@ -260,7 +260,7 @@ export default function SignupPage() {
                   minLength={VALIDATION.PASSWORD_MIN_LENGTH}
                   autoComplete="new-password"
                   className="input pr-12"
-                  placeholder="Create a strong password"
+                  placeholder={UI_TEXT.AUTH_PASSWORD_PLACEHOLDER}
                 />
                 <button
                   type="button"
@@ -300,7 +300,7 @@ export default function SignupPage() {
               )}
               
               <p className="mt-2 text-xs text-text-muted">
-                Must be at least {VALIDATION.PASSWORD_MIN_LENGTH} characters. Use a mix of letters, numbers, and symbols.
+                {UI_TEXT.AUTH_PASSWORD_HINT}
               </p>
             </div>
 

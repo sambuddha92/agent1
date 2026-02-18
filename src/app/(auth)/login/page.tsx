@@ -88,7 +88,7 @@ export default function LoginPage() {
             Welcome Back
           </h1>
           <p className="text-text-secondary text-base sm:text-lg leading-relaxed">
-            Sign in to access your garden dashboard and AI plant companion
+            {UI_TEXT.AUTH_LOGIN_TITLE}
           </p>
         </div>
 
@@ -149,7 +149,7 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <label htmlFor="email" className="label">
-                Email Address
+                {UI_TEXT.AUTH_EMAIL_LABEL}
               </label>
               <input
                 id="email"
@@ -159,20 +159,20 @@ export default function LoginPage() {
                 required
                 autoComplete="email"
                 className="input"
-                placeholder="you@example.com"
+                placeholder={UI_TEXT.AUTH_EMAIL_PLACEHOLDER}
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label htmlFor="password" className="label mb-0">
-                  Password
+                  {UI_TEXT.AUTH_PASSWORD_LABEL}
                 </label>
                 <Link 
                   href={ROUTES.FORGOT_PASSWORD}
                   className="text-xs text-primary hover:text-primary-hover transition-colors focus-visible:outline-none focus-visible:underline"
                 >
-                  Forgot password?
+                  {UI_TEXT.AUTH_FORGOT_PASSWORD}
                 </Link>
               </div>
               <div className="relative">
@@ -184,7 +184,7 @@ export default function LoginPage() {
                   required
                   autoComplete="current-password"
                   className="input pr-12"
-                  placeholder="Enter your password"
+                  placeholder={UI_TEXT.AUTH_PASSWORD_PLACEHOLDER}
                 />
                 <button
                   type="button"
@@ -219,7 +219,7 @@ export default function LoginPage() {
 
           <div className="mt-8 pt-8 border-t border-border text-center">
             <p className="text-text-secondary text-sm">
-              Don&apos;t have an account?{' '}
+              {UI_TEXT.AUTH_NEED_ACCOUNT}{' '}
               <Link 
                 href={ROUTES.SIGNUP}
                 className="text-primary font-semibold hover:text-primary-hover transition-colors focus-visible:outline-none focus-visible:underline"

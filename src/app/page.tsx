@@ -27,17 +27,17 @@ export default async function Home() {
               {UI_TEXT.APP_NAME}
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl text-text-primary max-w-3xl mx-auto leading-relaxed font-semibold">
-              AI botanist for your balcony. Learns your space, acts proactively, keeps plants thriving.
+              {UI_TEXT.LANDING_HERO_SUBTITLE}
             </p>
           </div>
           
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center mb-24 sm:mb-28 md:mb-32 max-w-md mx-auto">
             <Link href={ROUTES.SIGNUP} className="btn-primary text-center">
-              Start Growing Smarter
+              {UI_TEXT.LANDING_CTA_PRIMARY}
             </Link>
             <Link href={ROUTES.LOGIN} className="btn-secondary text-center">
-              {UI_TEXT.SIGN_IN}
+              {UI_TEXT.LANDING_CTA_SECONDARY}
             </Link>
           </div>
 
@@ -129,10 +129,10 @@ export default async function Home() {
           <div className="p-10 sm:p-12 md:p-16 gradient-forest rounded-2xl text-white shadow-xl">
             <div className="text-center max-w-3xl mx-auto">
               <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-5 sm:mb-6">
-                Start Growing Smarter
+                {UI_TEXT.LANDING_CTA_PRIMARY}
               </h2>
               <p className="text-base sm:text-lg md:text-xl mb-8 sm:mb-10 text-white/90">
-                3 photos. 2 questions. Your AI garden assistant starts today.
+                {UI_TEXT.LANDING_SETUP_PROMISE}
               </p>
               <Link
                 href={ROUTES.SIGNUP}
@@ -141,7 +141,7 @@ export default async function Home() {
                 Get Started Free
               </Link>
               <p className="text-sm text-white/70 mt-6">
-                No credit card • 4-minute setup
+                No credit card required
               </p>
             </div>
           </div>

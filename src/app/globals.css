@@ -1,36 +1,32 @@
-/* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
-
 /* Tailwind Directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ========================================================================
-   FLOATGREENS DESIGN SYSTEM
+   FLOATGREENS DESIGN SYSTEM - iOS-First, Mobile-First
    ========================================================================
    
    Design Principles:
+   • iOS-Native Quality: Matches Apple's design language & interaction patterns
+   • Mobile-First: Optimized for 375px–414px viewport, then scales to tablet/desktop
    • Minimalistic: Clean, uncluttered interfaces with purposeful whitespace
-   • Airy: Generous spacing, breathing room, adaptive color palette
-   • Green & Soothing: Nature-inspired colors, calming interactions
-   • Modern: Contemporary design patterns, smooth animations
-   • Accessible: WCAG 2.1 AA compliant, clear focus states, dark mode support
-   • Predictable: Consistent patterns, familiar interactions
-   • Adaptive: Seamlessly transitions between light and dark themes
+   • Calm & Trustworthy: Nature-inspired colors, smooth interactions
+   • Accessible: WCAG 2.1 AAA compliant, 44px+ touch targets, focus states
+   • Performance-First: Minimal animations respect prefers-reduced-motion
    
    Design Tokens Structure:
-   • Colors: Semantic naming (primary, surface, text-*) with automatic dark mode
-   • Spacing: 8px base grid (4, 8, 16, 24, 32, 48, 64, 96)
-   • Typography: Clear hierarchy with Playfair Display + Inter
-   • Shadows: Subtle elevations for depth perception
-   • Animations: Smooth, purposeful, respectful of motion preferences
+   • Typography: iOS system fonts (SF Pro) with Inter fallback
+   • Spacing: Strict 4px grid (4, 8, 12, 16, 20, 24, 32, 40, 48px)
+   • Colors: Semantic dark mode with light mode support
+   • Interactions: 150-250ms transitions, professional micro-interactions
+   • Touch Targets: 44px minimum (iOS standard)
    
    Dark Mode Philosophy:
    • All colors use CSS variables that automatically adapt
-   • Component classes (.card, .btn-*, etc.) inherit theme-aware colors
-   • Never hardcode colors like 'white' or '#fff' - use semantic tokens
-   • Backgrounds, text, and borders all respond to system theme preferences
+   • Component classes inherit theme-aware colors
+   • Never hardcode colors like 'white' or '#fff'
+   • Seamless light/dark mode transition
    ======================================================================== */
 
 /* ===== Design Tokens ===== */
@@ -60,23 +56,23 @@
   --color-border: #e3e8e4;            /* Subtle border */
   --color-border-hover: #d0d8d2;      /* Hover border */
   
-  /* Spacing Scale - 8px base grid */
-  --space-1: 0.25rem;   /* 4px */
-  --space-2: 0.5rem;    /* 8px */
-  --space-3: 0.75rem;   /* 12px */
-  --space-4: 1rem;      /* 16px */
-  --space-5: 1.25rem;   /* 20px */
-  --space-6: 1.5rem;    /* 24px */
-  --space-8: 2rem;      /* 32px */
-  --space-10: 2.5rem;   /* 40px */
-  --space-12: 3rem;     /* 48px */
-  --space-16: 4rem;     /* 64px */
-  --space-20: 5rem;     /* 80px */
-  --space-24: 6rem;     /* 96px */
+  /* Spacing Scale - Strict 4px grid (iOS Standard) */
+  --space-1: 0.25rem;    /* 4px  - ultra tight */
+  --space-2: 0.5rem;     /* 8px  - minimum gap */
+  --space-3: 0.75rem;    /* 12px - compact spacing */
+  --space-4: 1rem;       /* 16px - standard padding */
+  --space-5: 1.25rem;    /* 20px - comfortable spacing */
+  --space-6: 1.5rem;     /* 24px - section padding */
+  --space-8: 2rem;       /* 32px - major section spacing */
+  --space-10: 2.5rem;    /* 40px - large section spacing */
+  --space-12: 3rem;      /* 48px - hero spacing */
+  --space-16: 4rem;      /* 64px - extra large sections */
+  --space-20: 5rem;      /* 80px - full-width sections */
+  --space-24: 6rem;      /* 96px - maximum spacing */
   
-  /* Typography Scale */
-  --font-display: 'Playfair Display', Georgia, serif;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Typography Scale - iOS-First (Enhanced) */
+  --font-display: '-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Inter', 'Segoe UI', 'Roboto', 'system-ui', sans-serif;
+  --font-body: '-apple-system', 'BlinkMacSystemFont', 'SF Pro Text', 'Inter', 'Segoe UI', 'Roboto', 'system-ui', sans-serif;
   
   --text-xs: 0.75rem;      /* 12px */
   --text-sm: 0.875rem;     /* 14px */
@@ -122,11 +118,11 @@
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
   
-  /* Transition Presets */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Transition Presets - iOS-Standard Timing */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);      /* Quick feedback */
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);      /* Standard animation */
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);      /* Deliberate movement */
+  --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1); /* Playful bounce */
   
   /* Z-Index Scale */
   --z-dropdown: 1000;
@@ -248,7 +244,7 @@
     justify-content: center;
     gap: var(--space-2);
     padding: var(--space-4) var(--space-8);
-    min-height: 3rem;
+    min-height: 2.75rem;  /* 44px minimum touch target */
     background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
     color: white;
     border: none;
@@ -260,6 +256,17 @@
     box-shadow: var(--shadow-md);
     transition: all var(--transition-base);
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1), transparent 70%);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
   }
   
   .btn-primary:hover:not(:disabled) {
@@ -274,8 +281,14 @@
   }
   
   .btn-primary:focus-visible {
-    outline: 2px solid var(--color-primary);
+    outline: 2px solid white;
     outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(45, 95, 63, 0.4);
+  }
+  
+  .btn-primary:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
   }
   
   .btn-secondary {
@@ -284,7 +297,7 @@
     justify-content: center;
     gap: var(--space-2);
     padding: var(--space-4) var(--space-8);
-    min-height: 3rem;
+    min-height: 2.75rem;  /* 44px minimum touch target */
     background: var(--color-background);
     color: var(--color-primary);
     border: 2px solid var(--color-primary);
@@ -314,7 +327,7 @@
     justify-content: center;
     gap: var(--space-2);
     padding: var(--space-3) var(--space-6);
-    min-height: 2.5rem;
+    min-height: 2.75rem;  /* 44px minimum touch target */
     background: transparent;
     color: var(--color-text-secondary);
     border: none;
@@ -432,7 +445,7 @@
   
   .textarea {
     @apply input;
-    min-height: 8rem;
+    min-height: 7.5rem;  /* Allow vertical resize, maintain minimum */
     resize: vertical;
   }
   
@@ -591,7 +604,7 @@
     padding: var(--space-4);
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-border);
-    height: 60px;
+    height: 3.5rem;       /* 56px for comfortable mobile header */
     flex-shrink: 0;
     z-index: var(--z-sticky);
   }
@@ -601,8 +614,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.75rem;       /* 44px touch target */
+    height: 2.75rem;
     background: transparent;
     border: none;
     cursor: pointer;
@@ -764,8 +777,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.75rem;       /* 44px touch target */
+    height: 2.75rem;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-md);
@@ -907,8 +920,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 2.75rem;       /* 44px touch target */
+    height: 2.75rem;
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
@@ -970,8 +983,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 2.75rem;       /* 44px touch target */
+    height: 2.75rem;
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
@@ -1118,9 +1131,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    min-width: 1.75rem;
+    width: 2.75rem;       /* 44px touch target */
+    height: 2.75rem;
+    min-width: 2.75rem;
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
@@ -1400,8 +1413,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 2.75rem;       /* 44px touch target */
+    height: 2.75rem;
     background: transparent;
     color: var(--color-text-muted);
     border: none;
@@ -1701,9 +1714,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    min-width: 2.5rem;
+    width: 2.75rem;       /* 44px touch target */
+    height: 2.75rem;
+    min-width: 2.75rem;
     background: var(--color-surface-hover);
     color: var(--color-text-secondary);
     border: none;
@@ -1767,9 +1780,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    min-width: 2.5rem;
+    width: 2.75rem;       /* 44px touch target */
+    height: 2.75rem;
+    min-width: 2.75rem;
     background: var(--color-primary);
     color: white;
     border: none;
@@ -2056,8 +2069,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.75rem;       /* 44px touch target */
+    height: 2.75rem;
     padding: 0;
     background: transparent;
     color: var(--color-primary);
@@ -2423,7 +2436,7 @@
   animation: sidebar-slide-out 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* ===== Responsive Design Breakpoints ===== */
+/* ===== Responsive Design Breakpoints & Mobile-First Optimization ===== */
 /* Mobile First Approach
    - Base styles: Mobile (< 640px)
    - sm: 640px (Tablet)
@@ -2432,6 +2445,200 @@
    - xl: 1280px (Large Desktop)
    - 2xl: 1536px (Extra Large Desktop)
 */
+
+/* Mobile-First Container Optimization */
+@media (max-width: 640px) {
+  body {
+    font-size: 16px; /* Prevents iOS zoom on input focus */
+  }
+  
+  /* Ensure safe area insets on notched devices */
+  .safe-area-inset-x {
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+  }
+  
+  .safe-area-inset-bottom {
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  }
+  
+  /* Optimize touch targets for mobile - minimum 44x44px */
+  button, a, input[type="button"], input[type="checkbox"], input[type="radio"] {
+    min-height: 2.75rem; /* 44px */
+    min-width: 2.75rem; /* 44px */
+  }
+  
+  /* Mobile-optimized spacing */
+  .px-6 { padding-left: var(--space-4); padding-right: var(--space-4); }
+  .py-12 { padding-top: var(--space-8); padding-bottom: var(--space-8); }
+  
+  /* Improve readability on small screens */
+  h1, h2, h3 { line-height: var(--leading-snug); }
+  
+  /* Ensure inputs are touch-friendly */
+  input, textarea, select {
+    font-size: 16px; /* Prevents auto-zoom on iOS */
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  /* Mobile-optimized card padding */
+  .card, .card-interactive, .card-elevated {
+    padding: var(--space-4);
+  }
+  
+  /* Ensure buttons have adequate padding on mobile */
+  .btn-primary, .btn-secondary, .btn-ghost {
+    padding: var(--space-3) var(--space-6);
+    font-size: var(--text-sm);
+    min-height: 2.75rem;
+  }
+  
+  /* Mobile-optimized form spacing */
+  .label { margin-bottom: var(--space-3); }
+  .input { padding: var(--space-3); }
+  
+  /* Prevent horizontal scroll on mobile */
+  body, html {
+    overflow-x: hidden;
+  }
+  
+  /* Mobile menu optimization */
+  .mobile-header {
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  /* Chat input optimization for mobile */
+  .command-pill {
+    padding: var(--space-2);
+    margin: 0 var(--space-4);
+  }
+  
+  /* Bottom sheet for modals on mobile */
+  .modal {
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+    max-height: 90vh;
+  }
+}
+
+/* Tablet optimization (sm: 640px) */
+@media (min-width: 640px) and (max-width: 1023px) {
+  /* Increase spacing on tablets */
+  .px-6 { padding-left: var(--space-6); padding-right: var(--space-6); }
+  .py-12 { padding-top: var(--space-12); padding-bottom: var(--space-12); }
+  
+  /* Better card sizing on tablets */
+  .card, .card-interactive, .card-elevated {
+    padding: var(--space-6);
+  }
+  
+  /* Optimized chat layout for tablets */
+  .chat-messages {
+    padding: var(--space-6);
+  }
+  
+  .chat-content {
+    gap: var(--space-5);
+    max-width: 48rem;
+    margin: 0 auto;
+  }
+}
+
+/* Desktop optimization (lg: 1024px+) */
+@media (min-width: 1024px) {
+  /* Standard desktop spacing */
+  .px-6 { padding-left: var(--space-8); padding-right: var(--space-8); }
+  .py-12 { padding-top: var(--space-16); padding-bottom: var(--space-16); }
+  
+  /* Sidebar optimizations */
+  .sidebar-container {
+    width: 280px;
+  }
+  
+  /* Chat layout with sidebar */
+  .chat-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    grid-template-rows: 1fr;
+  }
+  
+  .chat-main {
+    grid-column: 2;
+  }
+  
+  /* Wider cards on desktop */
+  .card-interactive {
+    transition: all var(--transition-base);
+  }
+  
+  .card-interactive:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+  }
+  
+  /* Enhanced hover effects on desktop */
+  .nav-link:hover {
+    background: rgba(45, 95, 63, 0.1);
+  }
+}
+
+/* Large desktop (xl: 1280px+) */
+@media (min-width: 1280px) {
+  .max-w-4xl { max-width: 60rem; }
+  .max-w-5xl { max-width: 64rem; }
+  .max-w-6xl { max-width: 72rem; }
+}
+
+/* Extra large desktop (2xl: 1536px+) */
+@media (min-width: 1536px) {
+  body {
+    font-size: 18px;
+    line-height: var(--leading-relaxed);
+  }
+  
+  /* Extra spacing on ultra-wide screens */
+  .px-6 { padding-left: var(--space-12); padding-right: var(--space-12); }
+}
+
+/* Landscape orientation optimization */
+@media (max-height: 600px) and (orientation: landscape) {
+  /* Reduce vertical padding on small landscape screens */
+  .py-12 { padding-top: var(--space-4); padding-bottom: var(--space-4); }
+  
+  /* Hide decorative elements in landscape */
+  .decorative-element {
+    display: none;
+  }
+  
+  /* Compact form fields */
+  .input, .textarea {
+    padding: var(--space-2) var(--space-3);
+  }
+}
+
+/* Print optimization */
+@media print {
+  /* Hide interactive elements */
+  .no-print, button, input[type="button"] {
+    display: none !important;
+  }
+  
+  /* Optimize for print */
+  body {
+    background: white;
+    color: #000;
+  }
+  
+  a {
+    text-decoration: underline;
+  }
+  
+  .card, .card-elevated {
+    page-break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+}
 
 /* ===== Accessibility ===== */
 

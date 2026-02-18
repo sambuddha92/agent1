@@ -49,20 +49,20 @@ export const VALIDATION = {
 } as const;
 
 // ============================================
-// UI Text & Labels
+// UI Text & Labels - Refined & Concise
 // ============================================
 
 export const UI_TEXT = {
   APP_NAME: 'FloatGreens',
-  APP_TAGLINE: 'Your AI Plant Companion',
-  APP_DESCRIPTION: 'Expert plant care guidance powered by AI. Get personalized recommendations to help your garden thrive.',
+  APP_TAGLINE: 'AI plant care assistant',
+  APP_DESCRIPTION: 'AI plant care assistant. Learns your space, keeps plants thriving.',
   
   // Auth
   SIGN_IN: 'Sign In',
   SIGN_UP: 'Create Account',
   SIGN_OUT: 'Sign Out',
   
-  // Loading states
+  // Loading states  
   LOADING: 'Loading...',
   SIGNING_IN: 'Signing in...',
   CREATING_ACCOUNT: 'Creating account...',
@@ -71,11 +71,62 @@ export const UI_TEXT = {
   // Errors
   AUTH_ERROR: 'Authentication failed',
   GENERIC_ERROR: 'Something went wrong. Please try again.',
-  NETWORK_ERROR: 'Network error. Please check your connection.',
+  NETWORK_ERROR: 'Check your connection and try again.',
   
   // Success messages
   SIGN_UP_SUCCESS: 'Account created successfully!',
   SIGN_IN_SUCCESS: 'Welcome back!',
+  
+  // Landing Page
+  LANDING_HERO_SUBTITLE: 'AI plant care assistant. Learns your space, keeps plants thriving.',
+  LANDING_CTA_PRIMARY: 'Get Started',
+  LANDING_CTA_SECONDARY: 'Sign In',
+  LANDING_SETUP_PROMISE: 'Setup in minutes. Expert care guidance daily.',
+  
+  // Chat Page
+  CHAT_INPUT_PLACEHOLDER: 'Ask about your plants...',
+  CHAT_EMPTY_STATE_TITLE: 'Ask about your plants',
+  CHAT_EMPTY_STATE_SUBTITLE: 'Upload photos for instant analysis',
+  CHAT_POWERED_BY: 'AI-powered',
+  
+  // My Garden Page
+  GARDEN_EMPTY_STATE_TITLE: 'Your garden gallery is empty',
+  GARDEN_EMPTY_STATE_SUBTITLE: 'Upload plant photos to build your collection',
+  GARDEN_UPLOAD_CTA: 'Upload Photo',
+  
+  // Navigation
+  NAV_CHAT: 'Chat',
+  NAV_GARDEN: 'My Garden',
+  NAV_NEW_CHAT: 'New Chat',
+  
+  // Auth Pages
+  AUTH_EMAIL_LABEL: 'Email',
+  AUTH_PASSWORD_LABEL: 'Password',
+  AUTH_EMAIL_PLACEHOLDER: 'your.email@example.com',
+  AUTH_PASSWORD_PLACEHOLDER: 'Enter your password',
+  AUTH_PASSWORD_HINT: 'Minimum 6 characters',
+  AUTH_FORGOT_PASSWORD: 'Forgot password?',
+  AUTH_RESET_PASSWORD: 'Reset Password',
+  AUTH_LOGIN_TITLE: 'Sign in to continue',
+  AUTH_SIGNUP_TITLE: 'Create your account',
+  AUTH_ALREADY_HAVE_ACCOUNT: 'Already have an account?',
+  AUTH_NEED_ACCOUNT: 'Need an account?',
+  
+  // Common Actions
+  ACTION_SAVE: 'Save',
+  ACTION_CANCEL: 'Cancel', 
+  ACTION_DELETE: 'Delete',
+  ACTION_CONFIRM: 'Confirm',
+  ACTION_CLOSE: 'Close',
+  ACTION_RETRY: 'Try Again',
+  ACTION_UPLOAD: 'Upload',
+  ACTION_SEND: 'Send',
+  
+  // Status Messages
+  STATUS_ONLINE: 'Online',
+  STATUS_OFFLINE: 'Offline', 
+  STATUS_TYPING: 'Typing...',
+  STATUS_PROCESSING: 'Processing...',
 } as const;
 
 // ============================================

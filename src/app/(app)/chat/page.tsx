@@ -311,7 +311,7 @@ function ChatPageContent() {
               />
             </div>
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-primary mb-3 text-center leading-tight">
-              What can I help with?
+              {UI_TEXT.CHAT_EMPTY_STATE_TITLE}
             </h2>
             <p className="text-sm sm:text-base text-text-muted text-center max-w-md font-light mb-0">
               Ask about plant care, share a photo, or get garden design advice.
@@ -466,19 +466,6 @@ function ChatPageContent() {
                 <button
                   type="button"
                   className="plus-menu-item"
-                  onClick={() => { cameraInputRef.current?.click(); }}
-                >
-                  <div className="plus-menu-item-icon">
-                    <Camera className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Camera</div>
-                    <div className="text-xs text-text-muted">Take a photo</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  className="plus-menu-item"
                   onClick={() => { fileInputRef.current?.click(); }}
                 >
                   <div className="plus-menu-item-icon">
@@ -506,7 +493,7 @@ function ChatPageContent() {
                   handleSubmit(e);
                 }
               }}
-              placeholder="Ask anything"
+              placeholder={UI_TEXT.CHAT_INPUT_PLACEHOLDER}
               className="command-pill-input"
               disabled={isLoading}
               autoComplete="off"
@@ -554,7 +541,7 @@ function ChatPageContent() {
           />
 
           <p className="text-xs text-text-muted text-center font-light mt-3">
-            Powered by AI · Upload photos for instant identification
+            {UI_TEXT.CHAT_POWERED_BY} • {UI_TEXT.CHAT_EMPTY_STATE_SUBTITLE}
           </p>
         </form>
       </div>
