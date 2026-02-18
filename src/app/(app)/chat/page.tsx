@@ -14,7 +14,7 @@ import { CameraModal } from '@/components/CameraModal';
 import { useModelSelector } from '@/hooks/useModelSelector';
 import { resolveUserTier } from '@/lib/ai/model-resolver';
 import { isCameraSupported } from '@/lib/camera/permissions';
-import { safeCameraInvoke } from '@/lib/camera/safeCameraInvoke';
+import { useCameraCapture } from '@/hooks/useCameraCapture';
 import { useCheckCameraPermission } from '@/hooks/useCheckCameraPermission';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
 
@@ -68,7 +68,6 @@ function ChatPageContent() {
   const [user, setUser] = useState<User | null>(null);
   const [uploadedImages, setUploadedImages] = useState<Array<{ image: ImageType; file: File }>>([]);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
-  const [showCameraModal, setShowCameraModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   // Synchronous capability check — no async state, no UI flash.
@@ -77,6 +76,7 @@ function ChatPageContent() {
   const cameraSupported = isCameraSupported();
   // Permission check on page load (pre-checks camera permission, stored in hook state)
   const cameraPermission = useCheckCameraPermission();
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -222,34 +222,16 @@ function ChatPageContent() {
     }
   };
 
-  // Camera handlers - split by platform
-  // Desktop: use modal with getUserMedia
-  // Mobile: use native camera for iOS/Android compatibility
+  // New production-grade camera capture system
+  const { openCameraModal, isCameraModalOpen, closeCameraModal, handleCameraConfirm } = useCameraCapture({
+    onCapture: handleFileUpload
+  });
+
+  // Handle camera button click - uses new modal system for all platforms
   const handleOpenCamera = () => {
     setShowPlusMenu(false);
-
-    // On mobile, use native file input (iOS WebKit gesture chain requirement)
-    if (isMobile) {
-      safeCameraInvoke(
-        (file) => {
-          handleFileUpload(file);
-        },
-        () => {
-          console.log('[Camera] User cancelled');
-        }
-      );
-    } else {
-      // On desktop, show getUserMedia modal
-      setShowCameraModal(true);
-    }
-  };
-
-  const handleCloseCamera = () => {
-    setShowCameraModal(false);
-  };
-
-  const handleCameraCapture = (file: File) => {
-    handleFileUpload(file);
+    // CRITICAL: Direct synchronous call for iOS Safari gesture chain
+    openCameraModal();
   };
 
   const removeUploadedImage = (index: number) => {
@@ -691,11 +673,11 @@ function ChatPageContent() {
         </>
       )}
 
-      {/* Camera Modal */}
+      {/* New Production-Grade Camera Modal */}
       <CameraModal
-        isOpen={showCameraModal}
-        onClose={handleCloseCamera}
-        onCapture={handleCameraCapture}
+        isOpen={isCameraModalOpen}
+        onClose={closeCameraModal}
+        onConfirm={handleCameraConfirm}
       />
     </div>
   );

@@ -1,73 +1,93 @@
 /**
- * Camera Capture Hook
+ * Camera Capture Hook - Production Grade
  * 
- * React integration for camera photo capture.
- * Wraps capturePhoto() and integrates with existing upload pipeline.
+ * Manages the new camera modal flow with preview + confirm/retake system.
+ * Integrates with existing upload pipeline without breaking changes.
+ * 
+ * Architecture:
+ * - Opens fullscreen camera modal
+ * - User captures photo with native camera
+ * - Shows preview with retake/confirm options  
+ * - Integrates with existing attachment pipeline
  */
 
 import { useState, useCallback } from 'react';
-import { capturePhoto } from '@/lib/camera/capturePhoto';
 
 interface UseCameraCaptureOptions {
   onCapture: (file: File) => void | Promise<void>;
 }
 
 interface UseCameraCaptureReturn {
-  capture: () => Promise<void>;
-  isCapturing: boolean;
+  openCameraModal: () => void;
+  isCameraModalOpen: boolean;
+  closeCameraModal: () => void;
+  handleCameraConfirm: (file: File) => Promise<void>;
 }
 
 /**
- * Hook for capturing photos using device camera.
+ * Hook for production-grade camera capture with preview system
  * 
  * Usage:
  * ```tsx
- * const { capture, isCapturing } = useCameraCapture({
+ * const { openCameraModal, isCameraModalOpen, closeCameraModal } = useCameraCapture({
  *   onCapture: handleFileUpload
  * });
  * 
  * // CRITICAL: Direct user gesture binding (required for iOS Safari)
- * <button onClick={capture}>Take Photo</button>
- * ```
+ * <button onClick={openCameraModal}>Take Photo</button>
  * 
- * @param options.onCapture - Callback to receive the captured File object
- * @returns capture function and loading state
+ * // Modal component
+ * <CameraModal 
+ *   isOpen={isCameraModalOpen}
+ *   onClose={closeCameraModal}
+ *   onConfirm={handleCameraConfirm}
+ * />
+ * ```
  */
 export function useCameraCapture({ onCapture }: UseCameraCaptureOptions): UseCameraCaptureReturn {
-  const [isCapturing, setIsCapturing] = useState(false);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
 
-  const capture = useCallback(async () => {
-    // Prevent concurrent captures
-    if (isCapturing) return;
+  /**
+   * Opens the camera modal
+   * CRITICAL: Must be called directly from user gesture (no async boundaries)
+   */
+  const openCameraModal = useCallback(() => {
+    console.log('[useCameraCapture] Opening camera modal');
+    setIsCameraModalOpen(true);
+  }, []);
 
-    setIsCapturing(true);
+  /**
+   * Closes the camera modal and cleans up state
+   */
+  const closeCameraModal = useCallback(() => {
+    console.log('[useCameraCapture] Closing camera modal');
+    setIsCameraModalOpen(false);
+  }, []);
 
+  /**
+   * Handles confirmed photo from camera modal
+   * Passes to existing upload pipeline
+   */
+  const handleCameraConfirm = useCallback(async (file: File) => {
+    console.log('[useCameraCapture] Photo confirmed, passing to upload pipeline');
+    
     try {
-      // Invoke camera capture (may show native camera or getUserMedia UI)
-      const file = await capturePhoto();
-      
       // Pass to existing upload pipeline
       await onCapture(file);
+      console.log('[useCameraCapture] Upload pipeline completed successfully');
     } catch (error) {
-      // Graceful error handling - log but don't crash UI
-      // User cancellation is expected and should be silent
-      if (error instanceof Error) {
-        if (error.message.includes('cancelled')) {
-          // User cancelled - this is normal, no action needed
-          console.log('[Camera] User cancelled photo capture');
-        } else {
-          // Other errors - log for debugging but don't show error UI
-          // The upload pipeline (onCapture) will handle showing error messages
-          console.error('[Camera] Capture failed:', error.message);
-        }
-      }
-    } finally {
-      setIsCapturing(false);
+      console.error('[useCameraCapture] Upload pipeline failed:', error);
+      // Error handling is managed by the upload pipeline
     }
-  }, [isCapturing, onCapture]);
+  }, [onCapture]);
 
   return {
-    capture,
-    isCapturing,
+    openCameraModal,
+    isCameraModalOpen,
+    closeCameraModal,
+    // Internal handler - used by CameraModal
+    handleCameraConfirm,
+  } as UseCameraCaptureReturn & {
+    handleCameraConfirm: (file: File) => Promise<void>;
   };
 }
