@@ -226,12 +226,15 @@ function ChatPageContent() {
 
   // Open camera - use native file input on mobile for reliable camera access
   const handleOpenCamera = () => {
-    setShowPlusMenu(false);
-    // On mobile: use native file input with capture attribute (direct user gesture)
-    // This is required for iOS Safari and Edge mobile where getUserMedia in useEffect fails
+    // On mobile: use native file input with capture attribute
+    // CRITICAL: click() MUST happen FIRST, before any React state updates
+    // iOS Safari requires click() to be in the direct synchronous call stack
+    // of the user gesture - any prior setState can break the gesture chain
     if (isMobile) {
       cameraInputRef.current?.click();
+      setShowPlusMenu(false);  // State update AFTER click
     } else {
+      setShowPlusMenu(false);
       setShowCamera(true);
     }
   };
