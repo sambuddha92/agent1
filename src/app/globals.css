@@ -2765,3 +2765,286 @@
     visibility: hidden;
   }
 }
+
+/* ===== CAMERA CAPTURE STYLES ===== */
+
+/* Camera capture full-screen container */
+.camera-capture {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Camera backdrop */
+.camera-backdrop {
+  position: absolute;
+  inset: 0;
+  background: #000000;
+  z-index: 0;
+}
+
+/* Camera container */
+.camera-container {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+/* Camera header */
+.camera-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+/* Camera close button */
+.camera-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-full);
+  color: white;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.camera-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.camera-close-btn:active {
+  transform: scale(0.95);
+}
+
+/* Camera viewfinder */
+.camera-viewfinder {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #000000;
+}
+
+/* Camera video element */
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Camera loading state */
+.camera-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10;
+}
+
+/* Camera error state */
+.camera-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  padding: var(--space-6);
+  z-index: 10;
+}
+
+/* Camera grid overlay */
+.camera-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.camera-grid-line {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.camera-grid-line-h {
+  width: 100%;
+  height: 1px;
+  left: 0;
+}
+
+.camera-grid-line-v {
+  height: 100%;
+  width: 1px;
+  top: 0;
+}
+
+.camera-grid-line-1 {
+  top: 33.33%;
+}
+
+.camera-grid-line-2 {
+  top: 66.66%;
+}
+
+.camera-grid-line-v.camera-grid-line-1 {
+  left: 33.33%;
+  top: 0;
+}
+
+.camera-grid-line-v.camera-grid-line-2 {
+  left: 66.66%;
+  top: 0;
+}
+
+/* Camera flash effect */
+.camera-flash {
+  position: absolute;
+  inset: 0;
+  background: white;
+  z-index: 20;
+  animation: camera-flash-animation 0.3s ease-out;
+}
+
+@keyframes camera-flash-animation {
+  0% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Camera controls */
+.camera-controls {
+  padding: var(--space-6) var(--space-4);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.camera-controls-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 32rem;
+  margin: 0 auto;
+}
+
+/* Camera control buttons */
+.camera-control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-full);
+  color: white;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.camera-control-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.camera-control-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.camera-control-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Camera capture button */
+.camera-capture-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 5rem;
+  height: 5rem;
+  background: white;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 4px;
+}
+
+.camera-capture-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.camera-capture-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.camera-capture-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.camera-capture-btn-inner {
+  width: 100%;
+  height: 100%;
+  background: white;
+  border-radius: var(--radius-full);
+}
+
+/* Ensure proper spacing on mobile with notches */
+@supports (padding: max(0px)) {
+  .camera-header {
+    padding-top: max(var(--space-4), env(safe-area-inset-top));
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+  }
+  
+  .camera-controls {
+    padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+  }
+}
+
+/* Landscape mode adjustments */
+@media (orientation: landscape) and (max-height: 600px) {
+  .camera-header {
+    padding: var(--space-2) var(--space-4);
+  }
+  
+  .camera-controls {
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  .camera-controls-inner {
+    gap: var(--space-8);
+  }
+}

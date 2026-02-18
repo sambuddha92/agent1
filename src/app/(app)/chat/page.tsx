@@ -10,8 +10,10 @@ import { createClient } from '@/lib/supabase/client';
 import ModelSelector from '@/components/ModelSelector';
 import { ChatImage } from '@/components/ChatImage';
 import { ChatMessagesSkeleton } from '@/components/Skeletons';
+import { CameraCapture } from '@/components/CameraCapture';
 import { useModelSelector } from '@/hooks/useModelSelector';
 import { resolveUserTier } from '@/lib/ai/model-resolver';
+import { hasBackCamera } from '@/lib/camera/permissions';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
 
 /**
@@ -66,10 +68,11 @@ function ChatPageContent() {
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [hasBackCameraAvailable, setHasBackCameraAvailable] = useState(true); // Default to true to avoid flash
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
 
   // Derive user tier from Supabase user metadata
@@ -107,6 +110,15 @@ function ChatPageContent() {
       setUser(user as User || null);
     }
     fetchUser();
+  }, []);
+
+  // Check for back camera availability on mount
+  useEffect(() => {
+    async function checkBackCamera() {
+      const hasBack = await hasBackCamera();
+      setHasBackCameraAvailable(hasBack);
+    }
+    checkBackCamera();
   }, []);
 
   // Close plus menu on outside click
@@ -210,6 +222,22 @@ function ChatPageContent() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  // Handle camera capture
+  const handleCameraCapture = async (file: File) => {
+    await handleFileUpload(file);
+  };
+
+  // Open camera
+  const handleOpenCamera = () => {
+    setShowPlusMenu(false);
+    setShowCamera(true);
+  };
+
+  // Close camera
+  const handleCloseCamera = () => {
+    setShowCamera(false);
   };
 
   const removeUploadedImage = (index: number) => {
@@ -497,10 +525,25 @@ function ChatPageContent() {
             {/* Plus Menu — Desktop Popover */}
             {showPlusMenu && !isMobile && (
               <div className="plus-menu-popover animate-scale-in">
+                {hasBackCameraAvailable && (
+                  <button
+                    type="button"
+                    className="plus-menu-item"
+                    onClick={handleOpenCamera}
+                  >
+                    <div className="plus-menu-item-icon">
+                      <Camera className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">Camera</div>
+                      <div className="text-xs text-text-muted">Take a photo</div>
+                    </div>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="plus-menu-item"
-                  onClick={() => { fileInputRef.current?.click(); }}
+                  onClick={() => { fileInputRef.current?.click(); setShowPlusMenu(false); }}
                 >
                   <div className="plus-menu-item-icon">
                     <Upload className="w-4 h-4" />
@@ -549,23 +592,11 @@ function ChatPageContent() {
             </button>
           </div>
 
-          {/* Hidden file inputs */}
+          {/* Hidden file input */}
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFileUpload(file);
-              e.target.value = '';
-            }}
-          />
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -586,19 +617,21 @@ function ChatPageContent() {
           <div className="bottom-sheet-backdrop" onClick={() => setShowPlusMenu(false)} />
           <div className="bottom-sheet">
             <div className="bottom-sheet-handle" />
-            <button
-              type="button"
-              className="bottom-sheet-item"
-              onClick={() => { cameraInputRef.current?.click(); setShowPlusMenu(false); }}
-            >
-              <div className="bottom-sheet-item-icon">
-                <Camera className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-medium">Camera</div>
-                <div className="text-sm text-text-muted font-light">Take a photo of your plant</div>
-              </div>
-            </button>
+            {hasBackCameraAvailable && (
+              <button
+                type="button"
+                className="bottom-sheet-item"
+                onClick={handleOpenCamera}
+              >
+                <div className="bottom-sheet-item-icon">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-medium">Camera</div>
+                  <div className="text-sm text-text-muted font-light">Take a photo of your plant</div>
+                </div>
+              </button>
+            )}
             <button
               type="button"
               className="bottom-sheet-item"
@@ -614,6 +647,14 @@ function ChatPageContent() {
             </button>
           </div>
         </>
+      )}
+
+      {/* Camera Capture Modal */}
+      {showCamera && (
+        <CameraCapture
+          onCapture={handleCameraCapture}
+          onClose={handleCloseCamera}
+        />
       )}
     </div>
   );
