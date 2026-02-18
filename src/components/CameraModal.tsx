@@ -302,7 +302,7 @@ export function CameraModal({ isOpen, onClose, onConfirm }: CameraModalProps) {
           <span className="text-white font-semibold text-lg">Camera</span>
           <button
             onClick={handleClose}
-            className="p-2 rounded-full bg-black/40 hover:bg-black/60 transition-colors text-white"
+            className="p-2 rounded-full bg-black/40 hover:bg-black/60 transition-colors text-white focus:outline-none"
             aria-label="Close camera"
           >
             <X className="w-6 h-6" />
@@ -363,7 +363,7 @@ export function CameraModal({ isOpen, onClose, onConfirm }: CameraModalProps) {
                   /* Desktop Live Preview - Show Capture Button */
                   <button
                     onClick={handleDesktopCapture}
-                    className="relative w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white hover:bg-white/30 transition-all"
+                    className="relative w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white hover:bg-white/30 transition-all focus:outline-none"
                     aria-label="Capture photo"
                   >
                     <div className="absolute inset-2 rounded-full bg-white" />
@@ -374,7 +374,7 @@ export function CameraModal({ isOpen, onClose, onConfirm }: CameraModalProps) {
                     {/* Retake Button */}
                     <button
                       onClick={handleRetake}
-                      className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-full font-medium transition-colors border border-white/20"
+                      className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-full font-medium transition-colors border border-white/20 focus:outline-none"
                     >
                       Retake
                     </button>
@@ -382,7 +382,7 @@ export function CameraModal({ isOpen, onClose, onConfirm }: CameraModalProps) {
                     {/* Use Photo Button */}
                     <button
                       onClick={handleUsePhoto}
-                      className="px-6 py-3 bg-white hover:bg-white/90 text-black rounded-full font-medium transition-colors"
+                      className="px-6 py-3 bg-white hover:bg-white/90 text-black rounded-full font-medium transition-colors focus:outline-none"
                     >
                       Use Photo
                     </button>
@@ -404,7 +404,7 @@ export function CameraModal({ isOpen, onClose, onConfirm }: CameraModalProps) {
               <div className="text-center max-w-sm">
                 <button
                   onClick={handleOpenCamera}
-                  className="w-full px-8 py-4 bg-white hover:bg-white/90 text-black rounded-full font-semibold text-lg transition-colors shadow-lg"
+                  className="w-full px-8 py-4 bg-white hover:bg-white/90 text-black rounded-full font-semibold text-lg transition-colors shadow-lg focus:outline-none"
                 >
                   📷 Open Camera
                 </button>
