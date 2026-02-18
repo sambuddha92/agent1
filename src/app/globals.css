@@ -1755,8 +1755,7 @@
   }
   
   .command-pill:focus-within {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(45, 95, 63, 0.1), var(--shadow-lg);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.104), 0 4px 6px -4px rgba(0, 0, 0, 0.104);
   }
   
   .command-pill:hover:not(:focus-within) {
@@ -1810,6 +1809,11 @@
     outline: none;
     resize: none;
     overflow-y: auto;
+  }
+  
+  .command-pill-input:focus {
+    outline: none;
+    box-shadow: none;
   }
   
   /* Touch-optimized for mobile */
