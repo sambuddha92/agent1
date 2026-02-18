@@ -351,7 +351,10 @@ function ChatPageContent() {
     }
   };
 
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+  }, []);
 
   return (
     <div className="flex flex-col h-full w-full bg-gradient-to-br from-surface via-background to-surface">
@@ -519,21 +522,6 @@ function ChatPageContent() {
             {/* Plus Menu — Desktop Popover */}
             {showPlusMenu && !isMobile && (
               <div className="plus-menu-popover animate-scale-in">
-                {cameraSupported && (
-                  <button
-                    type="button"
-                    className="plus-menu-item"
-                    onClick={handleOpenCamera}
-                  >
-                    <div className="plus-menu-item-icon">
-                      <Camera className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium">Camera</div>
-                      <div className="text-xs text-text-muted">Take a photo</div>
-                    </div>
-                  </button>
-                )}
                 <button
                   type="button"
                   className="plus-menu-item"

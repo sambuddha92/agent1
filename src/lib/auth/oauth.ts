@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 
 /**
  * Initiate Google OAuth sign-in flow
- * Redirects to Google consent screen
+ * Redirects to Google account picker (no consent re-prompt for returning users)
  */
 export async function signInWithGoogle() {
   const supabase = createClient();
@@ -18,7 +18,9 @@ export async function signInWithGoogle() {
       redirectTo: `${window.location.origin}/auth/callback`,
       queryParams: {
         access_type: 'offline',
-        prompt: 'consent',
+        // 'select_account' shows only the account picker for returning users,
+        // skipping the full consent screen. Use 'consent' only on first signup.
+        prompt: 'select_account',
       },
     },
   });
