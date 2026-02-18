@@ -5,12 +5,24 @@
 import { Resend } from 'resend';
 import { EMAIL_CONFIG } from './constants';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 interface SendEmailOptions {
   to: string;
   subject: string;
   html: string;
+}
+
+/**
+ * Lazy-load Resend client to avoid build-time instantiation errors
+ * Only creates the client when actually needed at runtime
+ * 
+ * @returns Resend client instance or null if API key not configured
+ */
+function getResendClient(): Resend | null {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY not configured — email functionality disabled');
+    return null;
+  }
+  return new Resend(process.env.RESEND_API_KEY);
 }
 
 /**
@@ -21,8 +33,10 @@ interface SendEmailOptions {
  * @throws Error if email sending fails
  */
 export async function sendEmail({ to, subject, html }: SendEmailOptions) {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn('RESEND_API_KEY not configured — skipping email send');
+  const resend = getResendClient();
+  
+  if (!resend) {
+    console.warn('Resend client not available — skipping email send');
     return null;
   }
 
