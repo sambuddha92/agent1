@@ -14,6 +14,7 @@ import { CameraModal } from '@/components/CameraModal';
 import { useModelSelector } from '@/hooks/useModelSelector';
 import { resolveUserTier } from '@/lib/ai/model-resolver';
 import { isCameraSupported } from '@/lib/camera/permissions';
+import { safeCameraInvoke } from '@/lib/camera/safeCameraInvoke';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
 
 /**
@@ -218,10 +219,26 @@ function ChatPageContent() {
     }
   };
 
-  // Camera modal handlers
+  // Camera handlers - split by platform
+  // Desktop: use modal with getUserMedia
+  // Mobile: use native camera for iOS/Android compatibility
   const handleOpenCamera = () => {
     setShowPlusMenu(false);
-    setShowCameraModal(true);
+
+    // On mobile, use native file input (iOS WebKit gesture chain requirement)
+    if (isMobile) {
+      safeCameraInvoke(
+        (file) => {
+          handleFileUpload(file);
+        },
+        () => {
+          console.log('[Camera] User cancelled');
+        }
+      );
+    } else {
+      // On desktop, show getUserMedia modal
+      setShowCameraModal(true);
+    }
   };
 
   const handleCloseCamera = () => {
@@ -353,6 +370,13 @@ function ChatPageContent() {
   useEffect(() => {
     setIsMobile(window.innerWidth < 768);
   }, []);
+
+  // Auto-focus textarea on desktop when chat is ready (iOS blocks programmatic focus — by design)
+  useEffect(() => {
+    if (!isMobile && !isLoadingConversation) {
+      textareaRef.current?.focus();
+    }
+  }, [isMobile, isLoadingConversation]);
 
   return (
     <div className="flex flex-col h-full w-full bg-gradient-to-br from-surface via-background to-surface">
@@ -564,12 +588,18 @@ function ChatPageContent() {
                   e.preventDefault();
                   handleSubmit(e);
                 }
+                if (e.key === 'Escape') {
+                  setShowPlusMenu(false);
+                }
               }}
               placeholder={UI_TEXT.CHAT_INPUT_PLACEHOLDER}
               className="command-pill-input"
               disabled={isLoading}
               autoComplete="off"
+              inputMode="text"
               rows={1}
+              data-gramm="false"
+              spellCheck="false"
             />
 
             {/* Send Button */}

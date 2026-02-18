@@ -226,6 +226,7 @@
   button {
     font-family: inherit;
     cursor: pointer;
+    touch-action: manipulation; /* Eliminates iOS Safari 300ms tap delay */
   }
 
   button:disabled {
@@ -1585,6 +1586,7 @@
     padding: var(--space-8);
     scrollbar-width: thin;
     scrollbar-color: var(--color-border-hover) transparent;
+    -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
   }
   
   .chat-messages::-webkit-scrollbar {

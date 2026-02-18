@@ -36,7 +36,7 @@ export default function ImageDetailModal({
 
   const isFavorite = image.metadata?.is_favorite ?? false;
 
-  // Handle keyboard navigation
+  // Handle keyboard navigation + prevent body scroll while modal is open
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -44,8 +44,12 @@ export default function ImageDetailModal({
       }
     };
 
+    document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [onClose]);
 
   const handleDownload = async () => {
@@ -200,12 +204,6 @@ export default function ImageDetailModal({
         </div>
       </div>
 
-      {/* Prevent background scroll */}
-      <style>{`
-        body {
-          overflow: hidden;
-        }
-      `}</style>
     </div>
   );
 }

@@ -220,7 +220,7 @@ export function CameraModal({ isOpen, onClose, onCapture }: CameraModalProps) {
               )}
             </button>
           </div>
-          <p className="text-white/60 text-xs text-center mt-4">
+          <p className="text-white/60 text-xs text-center mt-4 sm:hidden">
             Tap to capture
           </p>
         </div>

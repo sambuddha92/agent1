@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/actions';
 import { API_ENDPOINTS } from '@/lib/constants';
 import AppSidebar from '@/components/AppSidebar';
+import DeleteConfirmModal from '@/app/(app)/my-garden/components/DeleteConfirmModal';
 import type { User } from '@supabase/supabase-js';
 import type { Conversation } from '@/types';
 
@@ -84,27 +85,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     router.push(`/chat?id=${id}`);
   };
 
-  const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    if (!confirm('Delete this conversation? This action cannot be undone.')) {
-      return;
-    }
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  const handleDeleteConversation = (conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeleteConfirmId(conversationId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmId) return;
+    
     try {
-      const response = await fetch(`${API_ENDPOINTS.CONVERSATIONS}/${conversationId}`, {
+      const response = await fetch(`${API_ENDPOINTS.CONVERSATIONS}/${deleteConfirmId}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
-        setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+        setConversations((prev) => prev.filter((c) => c.id !== deleteConfirmId));
         
-        if (conversationId === currentConversationId) {
+        if (deleteConfirmId === currentConversationId) {
           handleNewChat();
         }
       }
     } catch (error) {
       console.error('[layout] Error deleting conversation:', error);
+    } finally {
+      setDeleteConfirmId(null);
     }
   };
 
@@ -143,6 +149,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
         {children}
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <DeleteConfirmModal
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeleteConfirmId(null)}
+          isDeleting={false}
+        />
+      )}
     </div>
   );
 }

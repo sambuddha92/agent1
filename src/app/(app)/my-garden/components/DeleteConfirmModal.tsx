@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+
 interface DeleteConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
@@ -11,6 +13,15 @@ export default function DeleteConfirmModal({
   onCancel,
   isDeleting,
 }: DeleteConfirmModalProps) {
+  // Escape key cancels the modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-sm">
       <div className="bg-surface border border-primary/20 rounded-xl shadow-2xl max-w-sm w-full p-6 sm:p-8 animate-scale-in">
