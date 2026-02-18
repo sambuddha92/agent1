@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { API_ENDPOINTS, UI_TEXT } from '@/lib/constants';
-import { Plus, SendHorizontal, X, Camera, Upload, Loader2 } from 'lucide-react';
+import { Plus, SendHorizontal, X, Camera, Upload, Loader2, AlertCircle, Check } from 'lucide-react';
 import { uploadImageClient } from '@/lib/supabase/image-client';
 import { createClient } from '@/lib/supabase/client';
 import ModelSelector from '@/components/ModelSelector';
@@ -76,8 +76,7 @@ function ChatPageContent() {
   // Only hidden on environments where mediaDevices is entirely absent.
   const cameraSupported = isCameraSupported();
   // Permission check on page load (pre-checks camera permission, stored in hook state)
-  // TODO: display permission status badge on camera button
-  useCheckCameraPermission();
+  const cameraPermission = useCheckCameraPermission();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -552,14 +551,22 @@ function ChatPageContent() {
                   <button
                     type="button"
                     className="plus-menu-item"
-                    onClick={handleOpenCamera}
+                    onClick={cameraPermission.isDenied ? () => cameraPermission.requestPermission() : handleOpenCamera}
                   >
                     <div className="plus-menu-item-icon">
-                      <Camera className="w-4 h-4" />
+                      {cameraPermission.isGranted && <Check className="w-4 h-4 text-green-500" />}
+                      {cameraPermission.isDenied && <AlertCircle className="w-4 h-4 text-red-500" />}
+                      {(cameraPermission.isPrompt || cameraPermission.isChecking) && <Camera className="w-4 h-4" />}
                     </div>
                     <div>
-                      <div className="text-sm font-medium">Camera</div>
-                      <div className="text-xs text-text-muted">Take a photo</div>
+                      <div className="text-sm font-medium">
+                        {cameraPermission.isDenied ? 'Request Permission' : 'Camera'}
+                      </div>
+                      <div className="text-xs text-text-muted">
+                        {cameraPermission.isGranted && 'Ready'}
+                        {cameraPermission.isDenied && 'Permission denied'}
+                        {(cameraPermission.isPrompt || cameraPermission.isChecking) && 'Take a photo'}
+                      </div>
                     </div>
                   </button>
                 )}
@@ -650,14 +657,20 @@ function ChatPageContent() {
               <button
                 type="button"
                 className="bottom-sheet-item"
-                onClick={handleOpenCamera}
+                onClick={cameraPermission.isDenied ? () => cameraPermission.requestPermission() : handleOpenCamera}
               >
                 <div className="bottom-sheet-item-icon">
-                  <Camera className="w-5 h-5" />
+                  {cameraPermission.isGranted && <Check className="w-5 h-5 text-green-500" />}
+                  {cameraPermission.isDenied && <AlertCircle className="w-5 h-5 text-red-500" />}
+                  {(cameraPermission.isPrompt || cameraPermission.isChecking) && <Camera className="w-5 h-5" />}
                 </div>
                 <div>
-                  <div className="font-medium">Camera</div>
-                  <div className="text-sm text-text-muted font-light">Take a photo of your plant</div>
+                  <div className="font-medium">
+                    {cameraPermission.isDenied ? 'Request Camera Permission' : 'Camera'}
+                  </div>
+                  <div className="text-sm text-text-muted font-light">
+                    {cameraPermission.isDenied ? 'Tap to allow camera access' : 'Take a photo of your plant'}
+                  </div>
                 </div>
               </button>
             )}

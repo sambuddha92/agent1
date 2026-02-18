@@ -24,10 +24,17 @@ interface CameraModalProps {
 export function CameraModal({ isOpen, onClose, onCapture }: CameraModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  
+  // Drag to dismiss state
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ y: 0, timestamp: 0 });
+  const dismissThreshold = useRef(0);
 
   // Initialize camera when modal opens
   useEffect(() => {
@@ -156,10 +163,76 @@ export function CameraModal({ isOpen, onClose, onCapture }: CameraModalProps) {
     onClose();
   };
 
+  const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
+    // Only allow drag if not initializing, no error, and not capturing
+    if (isInitializing || error || isCapturing) return;
+    
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    
+    dragStartRef.current = {
+      y: clientY,
+      timestamp: Date.now(),
+    };
+    
+    // Calculate dismiss threshold as 30-40% of viewport height
+    dismissThreshold.current = window.innerHeight * 0.35;
+    
+    setIsDragging(true);
+  };
+
+  const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!isDragging) return;
+    
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const offset = clientY - dragStartRef.current.y;
+    
+    // Only allow downward drag (positive offset)
+    if (offset > 0) {
+      setDragOffset(offset);
+    }
+  };
+
+  const handleDragEnd = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!isDragging) return;
+    
+    setIsDragging(false);
+    
+    const clientY = 'touches' in e ? e.changedTouches[0].clientY : (e as React.MouseEvent).clientY;
+    const offset = clientY - dragStartRef.current.y;
+    const timeElapsed = Date.now() - dragStartRef.current.timestamp;
+    
+    // Calculate velocity (pixels per millisecond)
+    const velocity = timeElapsed > 0 ? offset / timeElapsed : 0;
+    
+    // Dismiss if:
+    // 1. Offset exceeds threshold (30-40% of viewport)
+    // 2. Quick flick detected (velocity > 0.5 px/ms, roughly 500px/1s)
+    if (offset > dismissThreshold.current || velocity > 0.5) {
+      handleClose();
+    } else {
+      // Snap back to top with animation
+      setDragOffset(0);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black">
+    <div 
+      ref={containerRef}
+      className="fixed inset-0 z-50 bg-black touch-none"
+      onTouchStart={handleDragStart}
+      onTouchMove={handleDragMove}
+      onTouchEnd={handleDragEnd}
+      onMouseDown={handleDragStart}
+      onMouseMove={handleDragMove}
+      onMouseUp={handleDragEnd}
+      onMouseLeave={handleDragEnd}
+      style={{
+        transform: `translateY(${dragOffset}px)`,
+        transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+      }}
+    >
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
         <span className="text-white font-semibold text-lg">Camera</span>
