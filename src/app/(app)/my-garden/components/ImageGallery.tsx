@@ -2,7 +2,7 @@
 
 import { memo } from 'react';
 import type { Image as ImageType } from '@/types';
-import { InboxIcon } from 'lucide-react';
+import { ImageIcon } from 'lucide-react';
 import ImageCard from './ImageCard';
 
 interface ImageGalleryProps {
@@ -20,34 +20,32 @@ function ImageGallery({
 }: ImageGalleryProps) {
   if (images.length === 0) {
     return (
-      <div className="text-center py-12 sm:py-16">
-        <div className="mb-4 opacity-50 flex justify-center">
-          <InboxIcon size={48} />
+      <div className="flex flex-col items-center justify-center py-20 px-4">
+        <div className="w-16 h-16 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-center mb-4">
+          <ImageIcon size={28} className="text-[var(--color-text-muted)]" />
         </div>
-        <p className="text-text-secondary">No images match your filter</p>
+        <p className="text-base font-medium text-[var(--color-text-secondary)] mb-1">No photos found</p>
+        <p className="text-sm text-[var(--color-text-muted)]">Try a different filter</p>
       </div>
     );
   }
 
   return (
-    <div className="mb-12">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+    <section aria-label="Image gallery">
+      {/* Vertical stack - single column, max-width centered */}
+      <div className="flex flex-col gap-4 max-w-xl mx-auto">
         {images.map((image, index) => (
-          <div
+          <ImageCard
             key={image.id}
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            <ImageCard
-              image={image}
-              onImageClick={onImageClick}
-              onToggleFavorite={onToggleFavorite}
-              onDelete={onDelete}
-              size="small"
-            />
-          </div>
+            image={image}
+            onImageClick={onImageClick}
+            onToggleFavorite={onToggleFavorite}
+            onDelete={onDelete}
+            index={index}
+          />
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 

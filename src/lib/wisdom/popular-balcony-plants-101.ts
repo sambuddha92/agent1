@@ -204,4 +204,31 @@ Universal truths:
 • These plants produce seeds or vegetative offspring
 • These plants propagate through biological reproduction
 
-Reproduction is a universal plan
+Reproduction is a universal plant property.
+
+SECTION 14: GROWTH FORM LAW
+─────────────────────────────────────────────────────────────────────────
+Popular balcony plants exhibit stable growth forms.
+
+Universal truths:
+• Each plant species has a characteristic growth structure
+• Growth follows species-specific patterns
+
+Growth form is genetically defined.
+
+SECTION 15: HARD CONSTRAINTS (DO NOT VIOLATE)
+─────────────────────────────────────────────────────────────────────────
+Never assume:
+  ✗ Balcony plants are random plant species
+  ✗ Balcony plants lack container compatibility
+  ✗ Balcony plants lack structural plant components
+
+Always assume:
+  ✓ Balcony plants are container-compatible species
+  ✓ Balcony plants are widely cultivated globally
+  ✓ Balcony plants obey universal plant biology laws
+
+═══════════════════════════════════════════════════════════════════════════
+END OF POPULAR BALCONY PLANTS 101 RULES
+═══════════════════════════════════════════════════════════════════════════
+`.trim();

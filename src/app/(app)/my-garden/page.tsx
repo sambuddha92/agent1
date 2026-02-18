@@ -1,23 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { Image as ImageType } from '@/types';
 import MyGardenHeader from './components/MyGardenHeader';
-import FavoritesCarousel from './components/FavoritesCarousel';
 import ImageGallery from './components/ImageGallery';
-import ImageDetailModal from './components/ImageDetailModal';
+import ImageViewer from './components/ImageViewer';
 import DeleteConfirmModal from './components/DeleteConfirmModal';
 import EmptyState from './components/EmptyState';
+import { Loader2 } from 'lucide-react';
 
 type FilterType = 'all' | 'uploaded' | 'generated' | 'favorites';
+type SortType = 'newest' | 'oldest' | 'favorites-first';
 
 export default function MyGardenPage() {
   const [images, setImages] = useState<ImageType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('all');
-  const [selectedImage, setSelectedImage] = useState<ImageType | null>(null);
+  const [selectedSort, setSelectedSort] = useState<SortType>('newest');
+  const [viewerState, setViewerState] = useState<{ isOpen: boolean; index: number }>({ isOpen: false, index: 0 });
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; path: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -55,7 +57,7 @@ export default function MyGardenPage() {
   }, []);
 
   // Handle favorite toggle
-  const handleToggleFavorite = async (imageId: string) => {
+  const handleToggleFavorite = useCallback(async (imageId: string) => {
     try {
       const updatedImages = images.map(img => {
         if (img.id === imageId) {
@@ -92,15 +94,18 @@ export default function MyGardenPage() {
     } catch (err) {
       console.error('Error updating favorite:', err);
       setError('Failed to update favorite');
+      // Clear error after 3 seconds
+      setTimeout(() => setError(null), 3000);
     }
-  };
+  }, [images]);
 
-  // Handle delete
-  const handleDeleteClick = (imageId: string, path: string) => {
+  // Handle delete click
+  const handleDeleteClick = useCallback((imageId: string, path: string) => {
     setDeleteConfirm({ id: imageId, path });
-  };
+  }, []);
 
-  const handleConfirmDelete = async () => {
+  // Handle confirm delete
+  const handleConfirmDelete = useCallback(async () => {
     if (!deleteConfirm) return;
 
     setDeletingId(deleteConfirm.id);
@@ -115,21 +120,46 @@ export default function MyGardenPage() {
         throw new Error(data.error || 'Failed to delete image');
       }
 
-      setImages(images.filter(img => img.id !== deleteConfirm.id));
+      setImages(prev => prev.filter(img => img.id !== deleteConfirm.id));
       setDeleteConfirm(null);
-      if (selectedImage?.id === deleteConfirm.id) {
-        setSelectedImage(null);
+      
+      // Close viewer if deleted image was being viewed
+      if (viewerState.isOpen) {
+        const currentImage = filteredAndSortedImages[viewerState.index];
+        if (currentImage?.id === deleteConfirm.id) {
+          setViewerState({ isOpen: false, index: 0 });
+        }
       }
     } catch (err) {
       console.error('Error deleting image:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete image');
+      setTimeout(() => setError(null), 3000);
     } finally {
       setDeletingId(null);
     }
-  };
+  }, [deleteConfirm, viewerState]);
 
-  // Filter images based on selected filter
-  const getFilteredImages = (): ImageType[] => {
+  // Sort images
+  const sortImages = useCallback((imgs: ImageType[]): ImageType[] => {
+    const sorted = [...imgs];
+    switch (selectedSort) {
+      case 'oldest':
+        return sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      case 'favorites-first':
+        return sorted.sort((a, b) => {
+          const aFav = a.metadata?.is_favorite ? 1 : 0;
+          const bFav = b.metadata?.is_favorite ? 1 : 0;
+          if (bFav !== aFav) return bFav - aFav;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+      case 'newest':
+      default:
+        return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+  }, [selectedSort]);
+
+  // Filter and sort images
+  const filteredAndSortedImages = useMemo((): ImageType[] => {
     let filtered = images;
 
     if (selectedFilter === 'uploaded') {
@@ -140,49 +170,68 @@ export default function MyGardenPage() {
       filtered = filtered.filter(img => img.metadata?.is_favorite);
     }
 
-    return filtered;
-  };
+    return sortImages(filtered);
+  }, [images, selectedFilter, sortImages]);
 
-  const filteredImages = getFilteredImages();
-  const favoriteImages = images.filter(img => img.metadata?.is_favorite);
+  // Get favorite images
+  const favoriteImages = useMemo(() => {
+    return images.filter(img => img.metadata?.is_favorite);
+  }, [images]);
 
+  // Handle image click - open viewer
+  const handleImageClick = useCallback((image: ImageType) => {
+    const index = filteredAndSortedImages.findIndex(img => img.id === image.id);
+    if (index !== -1) {
+      setViewerState({ isOpen: true, index });
+    }
+  }, [filteredAndSortedImages]);
+
+  // Handle viewer close
+  const handleViewerClose = useCallback(() => {
+    setViewerState({ isOpen: false, index: 0 });
+  }, []);
+
+  // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-text-secondary">Loading your garden...</p>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-surface via-background to-surface">
+        <div className="flex flex-col items-center gap-4 animate-fade-in">
+          <Loader2 className="w-10 h-10 text-primary animate-spin" />
+          <p className="text-text-muted text-sm font-light">Loading your garden...</p>
         </div>
       </div>
     );
   }
 
+  // Error state (no images)
   if (error && images.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-primary mb-2">Oops!</h1>
-          <p className="text-text-secondary mb-4">{error}</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-surface via-background to-surface">
+        <div className="text-center animate-fade-in">
+          <div className="text-5xl mb-4">⚠️</div>
+          <h1 className="text-xl font-semibold text-primary mb-2">Oops!</h1>
+          <p className="text-text-muted text-sm">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-surface via-background to-surface">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        {/* Header */}
+    <div className="h-full overflow-y-auto bg-gradient-to-br from-surface via-background to-surface">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 pb-24">
+        {/* Header with Filters & Sort */}
         <MyGardenHeader
           totalImages={images.length}
           selectedFilter={selectedFilter}
           onFilterChange={setSelectedFilter}
           favoriteCount={favoriteImages.length}
+          selectedSort={selectedSort}
+          onSortChange={setSelectedSort}
         />
 
-        {/* Error Message */}
+        {/* Error Toast */}
         {error && (
-          <div className="mb-6 p-4 bg-error/10 border border-error/30 rounded-lg text-error text-sm animate-fade-in">
+          <div className="mb-6 p-4 bg-error/10 border border-error/30 rounded-xl text-error text-sm animate-slide-up">
             {error}
           </div>
         )}
@@ -191,33 +240,21 @@ export default function MyGardenPage() {
         {images.length === 0 ? (
           <EmptyState />
         ) : (
-          <>
-            {/* Favorites Carousel */}
-            {favoriteImages.length > 0 && (
-              <FavoritesCarousel
-                images={favoriteImages}
-                onImageClick={setSelectedImage}
-                onToggleFavorite={handleToggleFavorite}
-                onDelete={handleDeleteClick}
-              />
-            )}
-
-            {/* Image Gallery */}
-            <ImageGallery
-              images={filteredImages}
-              onImageClick={setSelectedImage}
-              onToggleFavorite={handleToggleFavorite}
-              onDelete={handleDeleteClick}
-            />
-          </>
+          <ImageGallery
+            images={filteredAndSortedImages}
+            onImageClick={handleImageClick}
+            onToggleFavorite={handleToggleFavorite}
+            onDelete={handleDeleteClick}
+          />
         )}
       </div>
 
-      {/* Image Detail Modal */}
-      {selectedImage && (
-        <ImageDetailModal
-          image={selectedImage}
-          onClose={() => setSelectedImage(null)}
+      {/* Fullscreen Image Viewer */}
+      {viewerState.isOpen && filteredAndSortedImages.length > 0 && (
+        <ImageViewer
+          images={filteredAndSortedImages}
+          initialIndex={viewerState.index}
+          onClose={handleViewerClose}
           onToggleFavorite={handleToggleFavorite}
           onDelete={handleDeleteClick}
         />
