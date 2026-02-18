@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ROUTES, UI_TEXT } from '@/lib/constants';
 import UserProfile from './UserProfile';
+import PWAInstallPrompt from './PWAInstallPrompt';
 import { SidebarConversationListSkeleton, SidebarProfileSkeleton } from './Skeletons';
 import {
   Leaf,
@@ -333,6 +334,8 @@ export default function AppSidebar({
             <SidebarProfileSkeleton />
           ) : userEmail ? (
             <div className="animate-fade-in">
+              {/* PWA Install Prompt - Only on mobile */}
+              <PWAInstallPrompt />
               <UserProfile userEmail={userEmail} userName={userName} />
             </div>
           ) : null}

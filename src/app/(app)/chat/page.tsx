@@ -10,8 +10,8 @@ import { createClient } from '@/lib/supabase/client';
 import ModelSelector from '@/components/ModelSelector';
 import { ChatImage } from '@/components/ChatImage';
 import { ChatMessagesSkeleton } from '@/components/Skeletons';
-import { CameraCapture } from '@/components/CameraCapture';
 import { useModelSelector } from '@/hooks/useModelSelector';
+import { useCameraCapture } from '@/hooks/useCameraCapture';
 import { resolveUserTier } from '@/lib/ai/model-resolver';
 import { isCameraSupported } from '@/lib/camera/permissions';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
@@ -68,7 +68,6 @@ function ChatPageContent() {
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [showCamera, setShowCamera] = useState(false);
   // Synchronous capability check — no async state, no UI flash.
   // Camera option is shown whenever the browser supports getUserMedia.
   // Only hidden on environments where mediaDevices is entirely absent.
@@ -76,7 +75,6 @@ function ChatPageContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
 
   // Derive user tier from Supabase user metadata
@@ -219,27 +217,10 @@ function ChatPageContent() {
     }
   };
 
-  // Handle camera capture
-  const handleCameraCapture = async (file: File) => {
-    await handleFileUpload(file);
-  };
-
-  // Open camera - use native file input on mobile for reliable camera access
-  const handleOpenCamera = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('[Camera] Triggering native input click');
-    setShowPlusMenu(false);
-    // Use setTimeout to ensure menu closes before triggering camera
-    setTimeout(() => {
-      cameraInputRef.current?.click();
-    }, 50);
-  };
-
-  // Close camera
-  const handleCloseCamera = () => {
-    setShowCamera(false);
-  };
+  // Camera capture integration using new hook
+  const { capture: capturePhoto } = useCameraCapture({
+    onCapture: handleFileUpload,
+  });
 
   const removeUploadedImage = (index: number) => {
     setUploadedImages((prev) => prev.filter((_, i) => i !== index));
@@ -529,6 +510,21 @@ function ChatPageContent() {
             {/* Plus Menu — Desktop Popover */}
             {showPlusMenu && !isMobile && (
               <div className="plus-menu-popover animate-scale-in">
+                {cameraSupported && (
+                  <button
+                    type="button"
+                    className="plus-menu-item"
+                    onClick={() => { capturePhoto(); setShowPlusMenu(false); }}
+                  >
+                    <div className="plus-menu-item-icon">
+                      <Camera className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">Camera</div>
+                      <div className="text-xs text-text-muted">Take a photo</div>
+                    </div>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="plus-menu-item"
@@ -594,29 +590,6 @@ function ChatPageContent() {
             }}
           />
 
-          {/* Hidden file input for native camera capture on mobile */}
-          {/* Uses capture="environment" to trigger native camera on iOS Safari / Edge mobile */}
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            style={{ 
-              position: 'fixed',
-              top: '-1000px',
-              left: 0,
-              width: '1px',
-              height: '1px',
-              opacity: 0,
-              pointerEvents: 'none'
-            }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFileUpload(file);
-              e.target.value = '';
-            }}
-          />
-
           <p className="text-xs text-text-muted text-center font-light mt-3 opacity-70">
             {UI_TEXT.CHAT_POWERED_BY} • {UI_TEXT.CHAT_EMPTY_STATE_SUBTITLE}
           </p>
@@ -633,7 +606,7 @@ function ChatPageContent() {
               <button
                 type="button"
                 className="bottom-sheet-item"
-                onClick={handleOpenCamera}
+                onClick={() => { capturePhoto(); setShowPlusMenu(false); }}
               >
                 <div className="bottom-sheet-item-icon">
                   <Camera className="w-5 h-5" />
@@ -659,15 +632,6 @@ function ChatPageContent() {
             </button>
           </div>
         </>
-      )}
-
-      {/* Camera Capture Modal */}
-      {showCamera && (
-        <CameraCapture
-          onCapture={handleCameraCapture}
-          onClose={handleCloseCamera}
-          onFallbackToUpload={() => fileInputRef.current?.click()}
-        />
       )}
     </div>
   );
