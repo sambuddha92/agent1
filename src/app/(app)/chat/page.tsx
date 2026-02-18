@@ -10,8 +10,8 @@ import { createClient } from '@/lib/supabase/client';
 import ModelSelector from '@/components/ModelSelector';
 import { ChatImage } from '@/components/ChatImage';
 import { ChatMessagesSkeleton } from '@/components/Skeletons';
+import { CameraModal } from '@/components/CameraModal';
 import { useModelSelector } from '@/hooks/useModelSelector';
-import { useCameraCapture } from '@/hooks/useCameraCapture';
 import { resolveUserTier } from '@/lib/ai/model-resolver';
 import { isCameraSupported } from '@/lib/camera/permissions';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
@@ -66,6 +66,7 @@ function ChatPageContent() {
   const [user, setUser] = useState<User | null>(null);
   const [uploadedImages, setUploadedImages] = useState<Array<{ image: ImageType; file: File }>>([]);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   // Synchronous capability check — no async state, no UI flash.
@@ -217,10 +218,19 @@ function ChatPageContent() {
     }
   };
 
-  // Camera capture integration using new hook
-  const { capture: capturePhoto } = useCameraCapture({
-    onCapture: handleFileUpload,
-  });
+  // Camera modal handlers
+  const handleOpenCamera = () => {
+    setShowPlusMenu(false);
+    setShowCameraModal(true);
+  };
+
+  const handleCloseCamera = () => {
+    setShowCameraModal(false);
+  };
+
+  const handleCameraCapture = (file: File) => {
+    handleFileUpload(file);
+  };
 
   const removeUploadedImage = (index: number) => {
     setUploadedImages((prev) => prev.filter((_, i) => i !== index));
@@ -514,7 +524,7 @@ function ChatPageContent() {
                   <button
                     type="button"
                     className="plus-menu-item"
-                    onClick={() => { capturePhoto(); setShowPlusMenu(false); }}
+                    onClick={handleOpenCamera}
                   >
                     <div className="plus-menu-item-icon">
                       <Camera className="w-4 h-4" />
@@ -606,7 +616,7 @@ function ChatPageContent() {
               <button
                 type="button"
                 className="bottom-sheet-item"
-                onClick={() => { capturePhoto(); setShowPlusMenu(false); }}
+                onClick={handleOpenCamera}
               >
                 <div className="bottom-sheet-item-icon">
                   <Camera className="w-5 h-5" />
@@ -633,6 +643,13 @@ function ChatPageContent() {
           </div>
         </>
       )}
+
+      {/* Camera Modal */}
+      <CameraModal
+        isOpen={showCameraModal}
+        onClose={handleCloseCamera}
+        onCapture={handleCameraCapture}
+      />
     </div>
   );
 }
