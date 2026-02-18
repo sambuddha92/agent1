@@ -1,6 +1,13 @@
 /**
  * useCamera hook
- * Manages camera stream, capture, and controls
+ * Manages camera stream, capture, and controls.
+ *
+ * Design notes:
+ * - Multi-camera detection happens AFTER the stream is active so device labels
+ *   are populated (browsers hide labels before permission is granted).
+ * - Switching cameras stops the current stream, toggles the facingMode, then
+ *   re-starts.  The restart is triggered by an explicit call, not a useEffect
+ *   watching facingMode, to avoid race conditions.
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -20,110 +27,133 @@ export function useCamera() {
   const [error, setError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<FacingMode>('environment');
   const [canSwitchCamera, setCanSwitchCamera] = useState(false);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // Keep a ref to the current stream so cleanup callbacks always see the
+  // latest value without needing it as a dependency.
+  const streamRef = useRef<MediaStream | null>(null);
 
-  // Check if device has multiple cameras
-  useEffect(() => {
-    hasMultipleCameras().then(setCanSwitchCamera);
+  // ─── Internal helpers ───────────────────────────────────────────────────────
+
+  const attachStream = useCallback((newStream: MediaStream) => {
+    streamRef.current = newStream;
+    setStream(newStream);
+    setIsActive(true);
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = newStream;
+    }
   }, []);
 
-  // Start camera
-  const startCamera = useCallback(async () => {
-    setIsInitializing(true);
-    setError(null);
+  const releaseStream = useCallback(() => {
+    stopCameraStream(streamRef.current);
+    streamRef.current = null;
+    setStream(null);
+    setIsActive(false);
 
-    try {
-      const newStream = await requestCameraAccess(facingMode);
-      setStream(newStream);
-      setIsActive(true);
-
-      // Attach stream to video element if ref exists
-      if (videoRef.current) {
-        videoRef.current.srcObject = newStream;
-      }
-    } catch (err) {
-      const message = getCameraErrorMessage(err);
-      setError(message);
-      setIsActive(false);
-    } finally {
-      setIsInitializing(false);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
-  }, [facingMode]);
+  }, []);
 
-  // Stop camera
+  // ─── Public API ──────────────────────────────────────────────────────────────
+
+  /**
+   * Start (or restart) the camera.
+   * Accepts an optional facingMode so callers can pass the new mode directly
+   * during a camera switch without waiting for state to update.
+   */
+  const startCamera = useCallback(
+    async (mode?: FacingMode) => {
+      setIsInitializing(true);
+      setError(null);
+
+      // Stop any existing stream first
+      releaseStream();
+
+      try {
+        const newStream = await requestCameraAccess();
+        attachStream(newStream);
+
+        // Now that permission is granted, labels are available — check for
+        // multiple cameras so we can show the switch button if needed.
+        const multipleFound = await hasMultipleCameras();
+        setCanSwitchCamera(multipleFound);
+
+        // Track the active facing mode
+        if (mode) setFacingMode(mode);
+      } catch (err) {
+        setError(getCameraErrorMessage(err));
+        setIsActive(false);
+      } finally {
+        setIsInitializing(false);
+      }
+    },
+    [releaseStream, attachStream]
+  );
+
+  /** Stop the camera and release hardware. */
   const stopCamera = useCallback(() => {
-    if (stream) {
-      stopCameraStream(stream);
-      setStream(null);
-      setIsActive(false);
+    releaseStream();
+    setError(null);
+  }, [releaseStream]);
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-    }
-  }, [stream]);
-
-  // Switch between front and back camera
-  const switchCamera = useCallback(() => {
+  /** Toggle between front and back camera. */
+  const switchCamera = useCallback(async () => {
     if (!canSwitchCamera) return;
+    const nextMode: FacingMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    await startCamera(nextMode);
+  }, [canSwitchCamera, facingMode, startCamera]);
 
-    // Stop current stream
-    stopCamera();
+  // ─── Capture ─────────────────────────────────────────────────────────────────
 
-    // Toggle facing mode
-    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
-  }, [canSwitchCamera, stopCamera]);
+  /**
+   * Draw the current video frame to an off-screen canvas and return a Blob.
+   * Returns null if the video isn't ready.
+   */
+  const capturePhoto = useCallback((): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const video = videoRef.current;
+      if (!video || !streamRef.current || video.videoWidth === 0) {
+        resolve(null);
+        return;
+      }
 
-  // Re-start camera when facing mode changes
-  useEffect(() => {
-    if (isActive && !stream) {
-      startCamera();
-    }
-  }, [facingMode, isActive, stream, startCamera]);
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
-  // Capture photo from video stream
-  const capturePhoto = useCallback((): string | null => {
-    if (!videoRef.current || !stream) {
-      return null;
-    }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(null);
+        return;
+      }
 
-    const video = videoRef.current;
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Return base64 data URL
-    return canvas.toDataURL('image/jpeg', 0.9);
-  }, [stream]);
-
-  // Convert data URL to File object
-  const dataURLtoFile = useCallback((dataURL: string, filename: string): File => {
-    const arr = dataURL.split(',');
-    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-
-    return new File([u8arr], filename, { type: mime });
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => resolve(blob),
+        'image/jpeg',
+        0.92
+      );
+    });
   }, []);
 
-  // Cleanup on unmount
+  /**
+   * Convert a Blob to a named File object ready for upload.
+   */
+  const blobToFile = useCallback((blob: Blob, filename: string): File => {
+    return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+  }, []);
+
+  // ─── Cleanup on unmount ───────────────────────────────────────────────────────
+
   useEffect(() => {
     return () => {
-      if (stream) {
-        stopCameraStream(stream);
-      }
+      stopCameraStream(streamRef.current);
+      streamRef.current = null;
     };
-  }, [stream]);
+  }, []);
 
   return {
     videoRef,
@@ -137,6 +167,6 @@ export function useCamera() {
     stopCamera,
     switchCamera,
     capturePhoto,
-    dataURLtoFile,
+    blobToFile,
   };
 }

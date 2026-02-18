@@ -3048,3 +3048,288 @@
     gap: var(--space-8);
   }
 }
+
+/* ─── NEW CAMERA MODAL CLASSES ──────────────────────────────────────────────
+   Used by the rewritten CameraCapture component.
+   These co-exist with the legacy classes above so nothing breaks.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Full-screen overlay — black background, flex column */
+.camera-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  background: #000000;
+  /* Desktop: constrain width + add a subtle shadow */
+}
+
+@media (min-width: 768px) {
+  .camera-modal-overlay {
+    /* Centered card on desktop */
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(90vw, 720px);
+    height: min(90vh, 640px);
+    border-radius: var(--radius-2xl);
+    overflow: hidden;
+    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.7);
+    animation: scale-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+}
+
+/* Header strip */
+.camera-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+@supports (padding: max(0px)) {
+  .camera-modal-header {
+    padding-top: max(var(--space-4), env(safe-area-inset-top));
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+  }
+}
+
+/* Body — scrollable content area (used for photo preview) */
+.camera-modal-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  overflow: hidden;
+  background: #000000;
+}
+
+/* Footer strip */
+.camera-modal-footer {
+  padding: var(--space-4);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  flex-shrink: 0;
+}
+
+@supports (padding: max(0px)) {
+  .camera-modal-footer {
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+  }
+}
+
+/* Controls row at bottom of live camera */
+.camera-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-6) var(--space-6);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  flex-shrink: 0;
+  z-index: 10;
+  max-width: 100%;
+}
+
+@supports (padding: max(0px)) {
+  .camera-controls {
+    padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
+    padding-left: max(var(--space-6), env(safe-area-inset-left));
+    padding-right: max(var(--space-6), env(safe-area-inset-right));
+  }
+}
+
+/* Generic icon button (close, switch camera) */
+.camera-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;   /* 44px touch target */
+  height: 2.75rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-full);
+  color: white;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.camera-icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+  transform: scale(1.05);
+}
+
+.camera-icon-btn:active:not(:disabled) {
+  transform: scale(0.93);
+}
+
+.camera-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Centered loading / error state overlay */
+.camera-center-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 10;
+}
+
+/* Large shutter (capture) button */
+.camera-shutter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 5rem;
+  height: 5rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 4px solid rgba(255, 255, 255, 0.4);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  padding: 5px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.camera-shutter-btn:hover:not(:disabled) {
+  transform: scale(1.06);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.camera-shutter-btn:active:not(:disabled) {
+  transform: scale(0.93);
+}
+
+.camera-shutter-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Inner disc of the shutter button */
+.camera-shutter-inner {
+  width: 100%;
+  height: 100%;
+  background: white;
+  border-radius: var(--radius-full);
+}
+
+/* Action buttons (Retake / Use Photo) */
+.camera-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  flex: 1;
+  padding: var(--space-4) var(--space-5);
+  min-height: 2.75rem;  /* 44px */
+  border-radius: var(--radius-xl);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+}
+
+.camera-action-btn--primary {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+.camera-action-btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+.camera-action-btn--primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.camera-action-btn--secondary {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.camera-action-btn--secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.camera-action-btn--secondary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.camera-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Grid lines using new BEM-style modifier classes */
+.camera-grid-line.h {
+  width: 100%;
+  height: 1px;
+  left: 0;
+}
+
+.camera-grid-line.v {
+  height: 100%;
+  width: 1px;
+  top: 0;
+}
+
+.camera-grid-line.h.camera-grid-line--1 {
+  top: 33.33%;
+}
+
+.camera-grid-line.h.camera-grid-line--2 {
+  top: 66.66%;
+}
+
+.camera-grid-line.v.camera-grid-line--1 {
+  left: 33.33%;
+  top: 0;
+}
+
+.camera-grid-line.v.camera-grid-line--2 {
+  left: 66.66%;
+  top: 0;
+}
+
+/* Landscape adjustments for the new modal */
+@media (orientation: landscape) and (max-height: 600px) {
+  .camera-modal-header {
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+  .camera-controls {
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-3);
+  }
+  .camera-shutter-btn {
+    width: 4rem;
+    height: 4rem;
+  }
+}

@@ -13,7 +13,7 @@ import { ChatMessagesSkeleton } from '@/components/Skeletons';
 import { CameraCapture } from '@/components/CameraCapture';
 import { useModelSelector } from '@/hooks/useModelSelector';
 import { resolveUserTier } from '@/lib/ai/model-resolver';
-import { hasBackCamera } from '@/lib/camera/permissions';
+import { isCameraSupported } from '@/lib/camera/permissions';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
 
 /**
@@ -69,7 +69,10 @@ function ChatPageContent() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
-  const [hasBackCameraAvailable, setHasBackCameraAvailable] = useState(true); // Default to true to avoid flash
+  // Synchronous capability check — no async state, no UI flash.
+  // Camera option is shown whenever the browser supports getUserMedia.
+  // Only hidden on environments where mediaDevices is entirely absent.
+  const cameraSupported = isCameraSupported();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -110,15 +113,6 @@ function ChatPageContent() {
       setUser(user as User || null);
     }
     fetchUser();
-  }, []);
-
-  // Check for back camera availability on mount
-  useEffect(() => {
-    async function checkBackCamera() {
-      const hasBack = await hasBackCamera();
-      setHasBackCameraAvailable(hasBack);
-    }
-    checkBackCamera();
   }, []);
 
   // Close plus menu on outside click
@@ -525,7 +519,7 @@ function ChatPageContent() {
             {/* Plus Menu — Desktop Popover */}
             {showPlusMenu && !isMobile && (
               <div className="plus-menu-popover animate-scale-in">
-                {hasBackCameraAvailable && (
+                {cameraSupported && (
                   <button
                     type="button"
                     className="plus-menu-item"
@@ -617,7 +611,7 @@ function ChatPageContent() {
           <div className="bottom-sheet-backdrop" onClick={() => setShowPlusMenu(false)} />
           <div className="bottom-sheet">
             <div className="bottom-sheet-handle" />
-            {hasBackCameraAvailable && (
+            {cameraSupported && (
               <button
                 type="button"
                 className="bottom-sheet-item"
@@ -654,6 +648,7 @@ function ChatPageContent() {
         <CameraCapture
           onCapture={handleCameraCapture}
           onClose={handleCloseCamera}
+          onFallbackToUpload={() => fileInputRef.current?.click()}
         />
       )}
     </div>

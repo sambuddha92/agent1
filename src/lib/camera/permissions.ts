@@ -6,170 +6,134 @@
 export type PermissionStatus = 'granted' | 'denied' | 'prompt' | 'unsupported';
 
 /**
- * Check if the browser supports camera access
+ * Check if the browser supports camera access.
+ * This is a synchronous capability check — safe to call anywhere.
+ * Do NOT use label-based or device-count heuristics to decide visibility.
  */
 export function isCameraSupported(): boolean {
-  return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  return (
+    typeof navigator !== 'undefined' &&
+    !!navigator.mediaDevices &&
+    typeof navigator.mediaDevices.getUserMedia === 'function'
+  );
 }
 
 /**
- * Check current camera permission state
- * Returns 'unsupported' if Permissions API is not available
+ * Check current camera permission state via the Permissions API.
+ * Returns 'prompt' when the Permissions API is unavailable (iOS Safari etc.)
+ * so the flow always continues to actually requesting access.
  */
 export async function checkCameraPermission(): Promise<PermissionStatus> {
   if (!isCameraSupported()) {
     return 'unsupported';
   }
 
-  // Check if Permissions API is available
-  if (!navigator.permissions || !navigator.permissions.query) {
-    // Permissions API not available, return 'prompt' as we can't check
+  if (!navigator.permissions?.query) {
+    // Permissions API not available (iOS Safari) — assume we need to prompt
     return 'prompt';
   }
 
   try {
     const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
     return result.state as PermissionStatus;
-  } catch (error) {
-    // If query fails, assume we need to prompt
-    console.warn('[camera] Permission query failed:', error);
+  } catch {
+    // query() can throw on some browsers — treat as needing a prompt
     return 'prompt';
   }
 }
 
 /**
- * Request camera access
- * Returns the MediaStream if successful
+ * Request camera access with an environment-facing preference.
+ *
+ * Strategy:
+ *   1. Try { facingMode: { ideal: 'environment' } } — works on all devices,
+ *      browser picks back camera on phones and front camera on laptops gracefully.
+ *   2. If that fails (OverconstrainedError or any error), fall back to
+ *      { video: true } — bare minimum, always succeeds when a camera exists.
+ *
+ * Throws a user-friendly Error if permission is denied or no camera is found.
  */
-export async function requestCameraAccess(
-  facingMode: 'user' | 'environment' = 'environment'
-): Promise<MediaStream> {
+export async function requestCameraAccess(): Promise<MediaStream> {
   if (!isCameraSupported()) {
     throw new Error('Camera is not supported on this device');
   }
 
+  // Attempt 1: prefer environment (back) camera
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
-        facingMode: facingMode,
+        facingMode: { ideal: 'environment' },
         width: { ideal: 1920 },
         height: { ideal: 1080 },
       },
       audio: false,
     });
-
     return stream;
-  } catch (error) {
-    if (error instanceof Error) {
-      // Handle specific error types
-      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-        throw new Error('Camera permission was denied');
-      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-        throw new Error('No camera found on this device');
-      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-        throw new Error('Camera is already in use by another application');
-      } else if (error.name === 'OverconstrainedError') {
-        throw new Error('Camera does not meet requirements');
-      } else if (error.name === 'SecurityError') {
-        throw new Error('Camera access requires a secure context (HTTPS)');
-      }
+  } catch (firstError) {
+    // If permission was denied, throw immediately — no point retrying
+    if (
+      firstError instanceof Error &&
+      (firstError.name === 'NotAllowedError' || firstError.name === 'PermissionDeniedError')
+    ) {
+      throw new Error('Camera access denied. Please allow camera access in your browser settings.');
     }
-    throw new Error('Failed to access camera: ' + (error instanceof Error ? error.message : 'Unknown error'));
+
+    // For any other error (OverconstrainedError, device issues, etc.) try bare fallback
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      return stream;
+    } catch (fallbackError) {
+      // Now map the final error to a user-friendly message
+      if (fallbackError instanceof Error) {
+        switch (fallbackError.name) {
+          case 'NotAllowedError':
+          case 'PermissionDeniedError':
+            throw new Error('Camera access denied. Please allow camera access in your browser settings.');
+          case 'NotFoundError':
+          case 'DevicesNotFoundError':
+            throw new Error('No camera was found on this device.');
+          case 'NotReadableError':
+          case 'TrackStartError':
+            throw new Error('Camera is already in use by another application.');
+          case 'SecurityError':
+            throw new Error('Camera access requires a secure connection (HTTPS).');
+          default:
+            throw new Error(`Could not start camera: ${fallbackError.message}`);
+        }
+      }
+      throw new Error('An unknown error occurred while accessing the camera.');
+    }
   }
 }
 
 /**
- * Stop all tracks in a media stream
+ * Stop all tracks in a media stream and release the camera hardware.
  */
 export function stopCameraStream(stream: MediaStream | null): void {
   if (!stream) return;
-  
-  stream.getTracks().forEach(track => {
-    track.stop();
-  });
+  stream.getTracks().forEach((track) => track.stop());
 }
 
 /**
- * Check if device has multiple cameras (front and back)
+ * Check whether the device has more than one video input.
+ * Only call this AFTER permission has been granted — before that, device
+ * labels are empty and the count may be inaccurate on some browsers.
  */
 export async function hasMultipleCameras(): Promise<boolean> {
-  if (!isCameraSupported()) {
-    return false;
-  }
-
+  if (!isCameraSupported()) return false;
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+    const videoDevices = devices.filter((d) => d.kind === 'videoinput');
     return videoDevices.length > 1;
-  } catch (error) {
-    console.warn('[camera] Failed to enumerate devices:', error);
+  } catch {
     return false;
   }
 }
 
 /**
- * Check if device has a back/environment-facing camera
- * Returns false for laptops with only front cameras
- * Returns true for mobile devices with back cameras
- */
-export async function hasBackCamera(): Promise<boolean> {
-  if (!isCameraSupported()) {
-    return false;
-  }
-
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(device => device.kind === 'videoinput');
-    
-    // If no cameras at all, return false
-    if (videoDevices.length === 0) {
-      return false;
-    }
-    
-    // If only one camera, it's likely a laptop with front camera only
-    if (videoDevices.length === 1) {
-      const device = videoDevices[0];
-      const label = device.label.toLowerCase();
-      
-      // Check if the single camera is explicitly a back camera
-      // Some devices might label it as "back", "rear", or "environment"
-      if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
-        return true;
-      }
-      
-      // If it's labeled as front/user facing, definitely not a back camera
-      if (label.includes('front') || label.includes('user')) {
-        return false;
-      }
-      
-      // If unlabeled or generic, assume it's a front camera (typical for laptops)
-      return false;
-    }
-    
-    // If multiple cameras, check if any is a back camera
-    for (const device of videoDevices) {
-      const label = device.label.toLowerCase();
-      if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
-        return true;
-      }
-    }
-    
-    // Multiple cameras but can't identify a back camera from labels
-    // This is likely a phone/tablet, so assume back camera exists
-    return videoDevices.length > 1;
-  } catch (error) {
-    console.warn('[camera] Failed to check for back camera:', error);
-    // On error, return false to be safe (hide camera option)
-    return false;
-  }
-}
-
-/**
- * Get user-friendly error message for camera errors
+ * Get a user-friendly error message from an unknown thrown value.
  */
 export function getCameraErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return 'An unknown error occurred while accessing the camera';
+  if (error instanceof Error) return error.message;
+  return 'An unknown error occurred while accessing the camera.';
 }
