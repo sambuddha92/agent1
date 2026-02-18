@@ -52,7 +52,7 @@ export function ChatImage({ src, alt, index = 0 }: ChatImageProps) {
   // Unavailable state - static placeholder
   if (state === 'unavailable') {
     return (
-      <div className="mb-3 w-48 h-32 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+      <div className="mb-3 w-full max-w-xs h-32 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
         <span className="text-xs text-gray-400 dark:text-gray-500">Image unavailable</span>
       </div>
     );

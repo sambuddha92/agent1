@@ -15,6 +15,7 @@ import { useModelSelector } from '@/hooks/useModelSelector';
 import { resolveUserTier } from '@/lib/ai/model-resolver';
 import { isCameraSupported } from '@/lib/camera/permissions';
 import { safeCameraInvoke } from '@/lib/camera/safeCameraInvoke';
+import { useCheckCameraPermission } from '@/hooks/useCheckCameraPermission';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
 
 /**
@@ -74,6 +75,9 @@ function ChatPageContent() {
   // Camera option is shown whenever the browser supports getUserMedia.
   // Only hidden on environments where mediaDevices is entirely absent.
   const cameraSupported = isCameraSupported();
+  // Permission check on page load (pre-checks camera permission, stored in hook state)
+  // TODO: display permission status badge on camera button
+  useCheckCameraPermission();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);

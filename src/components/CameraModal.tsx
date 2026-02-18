@@ -5,6 +5,11 @@
  * 
  * Full-screen camera modal with live preview for both mobile and desktop.
  * Shows camera feed before capture, optimized for mobile screens.
+ * 
+ * Features:
+ * - Permission status display
+ * - HTTPS requirement warning
+ * - Live camera preview with capture button
  */
 
 import { useEffect, useRef, useState } from 'react';
