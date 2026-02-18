@@ -31,7 +31,6 @@ export function CameraModal({ isOpen, onClose, onConfirm }: CameraModalProps) {
   const [state, setState] = useState<CameraModalState>('idle');
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isVideoReady, setIsVideoReady] = useState(false);
 
   // More reliable platform detection
   const isMobile = typeof window !== 'undefined' && (
@@ -42,19 +41,87 @@ export function CameraModal({ isOpen, onClose, onConfirm }: CameraModalProps) {
 
   console.log('[CameraModal] Platform detection - isMobile:', isMobile, 'userAgent:', navigator.userAgent);
 
-  // Auto-start camera when modal opens - different behavior for mobile vs desktop
-  useEffect(() => {
-    if (isOpen && state === 'idle') {
-      console.log('[CameraModal] Modal opened, starting camera flow for platform:', isMobile ? 'mobile' : 'desktop');
-      if (isMobile) {
-        // Mobile: use file input bridge (for iOS Safari compatibility)
-        handleOpenCamera();
-      } else {
-        // Desktop: use getUserMedia directly (no file picker)
-        handleStartDesktopCamera();
-      }
+  // Desktop camera functions
+  const handleStartDesktopCamera = useCallback(async () => {
+    console.log('[CameraModal] Starting desktop camera setup');
+    setState('capturing');
+
+    try {
+      console.log('[CameraModal] Requesting getUserMedia access');
+      
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user', // Desktop usually has front camera
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 },
+        },
+        audio: false,
+      });
+
+      console.log('[CameraModal] Stream obtained successfully:', stream.getVideoTracks()[0]?.getSettings());
+      streamRef.current = stream;
+      
+      // CRITICAL FIX: Set state to preview and let useEffect handle video element setup
+      // This avoids the React timing issue where videoRef.current is null
+      // because React hasn't re-rendered yet
+      console.log('[CameraModal] Setting state to preview - useEffect will handle video setup');
+      setState('preview');
+      
+      // The useEffect hook (lines 72-103) will handle video element assignment
+      // after React re-renders with the video element in the DOM
+      
+    } catch (error) {
+      console.error('[CameraModal] Desktop camera failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown camera error';
+      alert(`Camera access failed: ${errorMessage}`);
+      onClose();
     }
-  }, [isOpen, state, isMobile]);
+  }, [onClose]);
+
+  // Mobile camera function
+  const handleOpenCamera = useCallback(async () => {
+    if (!cameraInputRef.current) {
+      console.error('[CameraModal] Camera input bridge not available');
+      alert('Camera not available. Please try again.');
+      onClose();
+      return;
+    }
+
+    setState('capturing');
+
+    try {
+      // This will trigger the native camera via file input
+      // Must be called synchronously within user gesture chain
+      console.log('[CameraModal] Opening camera via input bridge');
+      const file = await cameraInputRef.current.openCamera();
+      
+      // Create preview URL
+      const url = URL.createObjectURL(file);
+      
+      setCapturedFile(file);
+      setPreviewUrl(url);
+      setState('preview');
+      
+      console.log('[CameraModal] Photo captured, showing preview');
+    } catch (error) {
+      console.error('[CameraModal] Camera failed or cancelled:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage !== 'Camera timeout - user cancelled' && errorMessage !== 'User cancelled camera') {
+        // Only show alert for actual errors, not user cancellations
+        alert(`Camera error: ${errorMessage}`);
+      }
+      onClose();
+    }
+  }, [onClose]);
+
+  // Auto-start camera when modal opens - ONLY for desktop
+  // Mobile requires direct user gesture, so we show a button instead
+  useEffect(() => {
+    if (isOpen && state === 'idle' && !isMobile) {
+      console.log('[CameraModal] Desktop - auto-starting camera');
+      handleStartDesktopCamera();
+    }
+  }, [isOpen, state, isMobile, handleStartDesktopCamera]);
 
   // Memory cleanup when modal closes
   useEffect(() => {
@@ -77,7 +144,6 @@ export function CameraModal({ isOpen, onClose, onConfirm }: CameraModalProps) {
       // Setup event listeners
       videoRef.current.onloadedmetadata = () => {
         console.log('[CameraModal] Video metadata loaded - dimensions:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
-        setIsVideoReady(true);
       };
       
       videoRef.current.onloadeddata = () => {
@@ -117,43 +183,6 @@ export function CameraModal({ isOpen, onClose, onConfirm }: CameraModalProps) {
     setCapturedFile(null);
     setState('idle');
   }, [previewUrl]);
-
-  const handleStartDesktopCamera = useCallback(async () => {
-    console.log('[CameraModal] Starting desktop camera setup');
-    setState('capturing');
-    setIsVideoReady(false);
-
-    try {
-      console.log('[CameraModal] Requesting getUserMedia access');
-      
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user', // Desktop usually has front camera
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
-        },
-        audio: false,
-      });
-
-      console.log('[CameraModal] Stream obtained successfully:', stream.getVideoTracks()[0]?.getSettings());
-      streamRef.current = stream;
-      
-      // CRITICAL FIX: Set state to preview and let useEffect handle video element setup
-      // This avoids the React timing issue where videoRef.current is null
-      // because React hasn't re-rendered yet
-      console.log('[CameraModal] Setting state to preview - useEffect will handle video setup');
-      setState('preview');
-      
-      // The useEffect hook (lines 72-103) will handle video element assignment
-      // after React re-renders with the video element in the DOM
-      
-    } catch (error) {
-      console.error('[CameraModal] Desktop camera failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown camera error';
-      alert(`Camera access failed: ${errorMessage}`);
-      onClose();
-    }
-  }, [onClose]);
 
   const handleDesktopCapture = useCallback(async () => {
     const video = videoRef.current;
@@ -210,36 +239,6 @@ export function CameraModal({ isOpen, onClose, onConfirm }: CameraModalProps) {
       
     } catch (error) {
       console.error('[CameraModal] Desktop capture failed:', error);
-      onClose();
-    }
-  }, [onClose]);
-
-  const handleOpenCamera = useCallback(async () => {
-    if (!cameraInputRef.current) {
-      console.error('[CameraModal] Camera input bridge not available');
-      onClose();
-      return;
-    }
-
-    setState('capturing');
-
-    try {
-      // This will trigger the native camera via file input
-      // Must be called synchronously within user gesture chain
-      console.log('[CameraModal] Opening camera via input bridge');
-      const file = await cameraInputRef.current.openCamera();
-      
-      // Create preview URL
-      const url = URL.createObjectURL(file);
-      
-      setCapturedFile(file);
-      setPreviewUrl(url);
-      setState('preview');
-      
-      console.log('[CameraModal] Photo captured, showing preview');
-    } catch (error) {
-      console.log('[CameraModal] Camera cancelled or failed:', error);
-      // User cancelled - close modal
       onClose();
     }
   }, [onClose]);
@@ -397,12 +396,29 @@ export function CameraModal({ isOpen, onClose, onConfirm }: CameraModalProps) {
           </>
         )}
 
-        {/* Loading/Error State Fallback */}
+        {/* Idle State - Desktop auto-starts, Mobile shows button */}
         {state === 'idle' && (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <p className="text-white/80 text-sm">Preparing camera...</p>
-            </div>
+          <div className="flex items-center justify-center h-full px-6">
+            {isMobile ? (
+              /* Mobile: Show "Open Camera" button */
+              <div className="text-center max-w-sm">
+                <button
+                  onClick={handleOpenCamera}
+                  className="w-full px-8 py-4 bg-white hover:bg-white/90 text-black rounded-full font-semibold text-lg transition-colors shadow-lg"
+                >
+                  📷 Open Camera
+                </button>
+                <p className="text-white/60 text-sm mt-4">
+                  Tap to open your camera and take a photo
+                </p>
+              </div>
+            ) : (
+              /* Desktop: Show preparing message (auto-starts) */
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
+                <p className="text-white/80 text-sm">Preparing camera...</p>
+              </div>
+            )}
           </div>
         )}
       </div>
