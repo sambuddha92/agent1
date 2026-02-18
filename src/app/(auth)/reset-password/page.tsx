@@ -63,7 +63,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center gradient-nature px-6 py-12 relative overflow-hidden">
       {/* Decorative elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-[0.04]">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-[0.02]">
         <div className="absolute top-32 right-20 text-8xl animate-float">🌿</div>
         <div className="absolute bottom-40 left-16 text-7xl animate-float" style={{animationDelay: '2s'}}>🌱</div>
         <div className="absolute top-1/3 left-1/4 text-6xl animate-float" style={{animationDelay: '4s'}}>🍃</div>
@@ -73,7 +73,7 @@ export default function ResetPasswordPage() {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-block text-6xl mb-6 animate-float">🔐</div>
-          <h1 className="font-display text-5xl sm:text-6xl font-bold text-primary mb-4">
+          <h1 className="font-display text-4xl sm:text-5xl font-semibold text-primary mb-3 tracking-tight">
             New Password
           </h1>
           <p className="text-text-secondary text-base sm:text-lg leading-relaxed">

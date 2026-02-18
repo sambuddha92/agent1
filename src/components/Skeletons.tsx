@@ -16,10 +16,10 @@ export function MessageSkeleton() {
   return (
     <div className="animate-pulse mb-4">
       <div className="flex gap-4 mb-6">
-        <div className="w-8 h-8 rounded-full bg-gray-200"></div>
+        <div className="w-8 h-8 rounded-full bg-border"></div>
         <div className="flex-1">
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+          <div className="h-4 bg-border rounded w-3/4 mb-2"></div>
+          <div className="h-4 bg-border rounded w-5/6"></div>
         </div>
       </div>
     </div>
@@ -54,9 +54,9 @@ export function ChatMessagesSkeleton({ count = 4 }: { count?: number }) {
               }}
             >
               <div className="p-4 space-y-2">
-                <div className={`h-3 rounded ${isUser ? 'bg-primary/30' : 'bg-gray-300'} w-full`}></div>
-                <div className={`h-3 rounded ${isUser ? 'bg-primary/30' : 'bg-gray-300'} w-4/5`}></div>
-                {!isUser && <div className="h-3 rounded bg-gray-300 w-3/5"></div>}
+                <div className={`h-3 rounded ${isUser ? 'bg-primary/30' : 'bg-border-hover'} w-full`}></div>
+                <div className={`h-3 rounded ${isUser ? 'bg-primary/30' : 'bg-border-hover'} w-4/5`}></div>
+                {!isUser && <div className="h-3 rounded bg-border w-3/5"></div>}
               </div>
             </div>
           </div>
@@ -75,9 +75,9 @@ export function ImageGridSkeleton({ count = 12 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="aspect-square rounded-lg overflow-hidden bg-gray-100 animate-pulse"
+          className="aspect-square rounded-xl overflow-hidden bg-surface animate-pulse"
         >
-          <div className="w-full h-full bg-gradient-to-r from-gray-200 to-gray-300"></div>
+          <div className="w-full h-full bg-gradient-to-br from-border to-border-hover"></div>
         </div>
       ))}
     </div>
@@ -102,11 +102,11 @@ export function ChatPageSkeleton() {
       {/* Input area */}
       <div className="border-t border-border/50 p-6 bg-surface/60 backdrop-glass">
         <div className="max-w-4xl mx-auto">
-          <div className="h-12 bg-gray-200 rounded-lg animate-pulse mb-3"></div>
+          <div className="h-12 bg-border rounded-xl animate-pulse mb-3"></div>
           <div className="flex gap-3">
-            <div className="flex-1 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
-            <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
-            <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+            <div className="flex-1 h-10 bg-border rounded-xl animate-pulse"></div>
+            <div className="w-10 h-10 bg-border rounded-full animate-pulse"></div>
+            <div className="w-10 h-10 bg-border rounded-full animate-pulse"></div>
           </div>
         </div>
       </div>
@@ -121,9 +121,9 @@ export function ConversationListSkeleton({ count = 5 }: { count?: number }) {
   return (
     <div className="space-y-2">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="p-3 rounded-lg bg-gray-100 animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+        <div key={i} className="p-3 rounded-lg bg-surface animate-pulse">
+          <div className="h-4 bg-border rounded w-3/4 mb-2"></div>
+          <div className="h-3 bg-border rounded w-1/2"></div>
         </div>
       ))}
     </div>
@@ -159,10 +159,10 @@ export function SidebarConversationListSkeleton({ count = 4 }: { count?: number 
 export function ProfileSkeleton() {
   return (
     <div className="animate-pulse flex items-center gap-4 p-4">
-      <div className="w-12 h-12 rounded-full bg-gray-200"></div>
+      <div className="w-12 h-12 rounded-full bg-border"></div>
       <div className="flex-1">
-        <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
-        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+        <div className="h-4 bg-border rounded w-2/3 mb-2"></div>
+        <div className="h-3 bg-border rounded w-1/2"></div>
       </div>
     </div>
   );
@@ -197,7 +197,7 @@ export function ContentSkeleton({
 }) {
   return (
     <div
-      className={`bg-gray-200 rounded animate-pulse ${width} ${height} ${className}`}
+      className={`bg-border rounded animate-pulse ${width} ${height} ${className}`}
     ></div>
   );
 }

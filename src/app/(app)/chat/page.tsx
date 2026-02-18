@@ -76,6 +76,7 @@ function ChatPageContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
 
   // Derive user tier from Supabase user metadata
@@ -223,10 +224,16 @@ function ChatPageContent() {
     await handleFileUpload(file);
   };
 
-  // Open camera
+  // Open camera - use native file input on mobile for reliable camera access
   const handleOpenCamera = () => {
     setShowPlusMenu(false);
-    setShowCamera(true);
+    // On mobile: use native file input with capture attribute (direct user gesture)
+    // This is required for iOS Safari and Edge mobile where getUserMedia in useEffect fails
+    if (isMobile) {
+      cameraInputRef.current?.click();
+    } else {
+      setShowCamera(true);
+    }
   };
 
   // Close camera
@@ -379,10 +386,10 @@ function ChatPageContent() {
                 disabled={isLoading}
               />
             </div>
-            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-primary mb-3 text-center leading-tight">
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-4xl font-semibold text-primary mb-3 text-center leading-snug tracking-tight">
               {UI_TEXT.CHAT_EMPTY_STATE_TITLE}
             </h2>
-            <p className="text-sm sm:text-base text-text-muted text-center max-w-md font-light mb-0">
+            <p className="text-sm sm:text-base text-text-muted text-center max-w-sm font-light mb-0 leading-relaxed">
               Ask about plant care, share a photo, or get garden design advice.
             </p>
           </div>
@@ -574,12 +581,12 @@ function ChatPageContent() {
             </button>
           </div>
 
-          {/* Hidden file input */}
+          {/* Hidden file input for gallery upload */}
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            className="hidden"
+            style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) handleFileUpload(file);
@@ -587,7 +594,22 @@ function ChatPageContent() {
             }}
           />
 
-          <p className="text-xs text-text-muted text-center font-light mt-3">
+          {/* Hidden file input for native camera capture on mobile */}
+          {/* Uses capture="environment" to trigger native camera on iOS Safari / Edge mobile */}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileUpload(file);
+              e.target.value = '';
+            }}
+          />
+
+          <p className="text-xs text-text-muted text-center font-light mt-3 opacity-70">
             {UI_TEXT.CHAT_POWERED_BY} • {UI_TEXT.CHAT_EMPTY_STATE_SUBTITLE}
           </p>
         </form>

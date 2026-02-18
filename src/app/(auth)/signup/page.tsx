@@ -139,7 +139,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center gradient-nature px-6 py-12 relative overflow-hidden">
       {/* Decorative elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-[0.04]">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-[0.02]">
         <div className="absolute top-32 right-20 text-8xl animate-float">🌺</div>
         <div className="absolute bottom-40 left-16 text-7xl animate-float" style={{animationDelay: '2s'}}>🌻</div>
         <div className="absolute top-1/3 left-1/4 text-6xl animate-float" style={{animationDelay: '4s'}}>🍃</div>
@@ -151,10 +151,10 @@ export default function SignupPage() {
           <div className="inline-block mb-6 animate-float">
             <Leaf className="icon-3xl icon-primary mx-auto" />
           </div>
-          <h1 className="font-display text-5xl sm:text-6xl font-bold text-primary mb-4">
+          <h1 className="font-display text-4xl sm:text-5xl font-semibold text-primary mb-3 tracking-tight">
             Start Growing
           </h1>
-          <p className="text-text-secondary text-base sm:text-lg leading-relaxed">
+          <p className="text-text-secondary text-sm sm:text-base leading-relaxed font-light">
             {UI_TEXT.AUTH_SIGNUP_TITLE}
           </p>
         </div>
@@ -174,7 +174,7 @@ export default function SignupPage() {
               type="button"
               onClick={handleGoogleSignup}
               disabled={googleLoading || loading}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-background text-text-primary font-medium rounded-lg border border-border hover:bg-surface hover:border-border-hover transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
             >
               {googleLoading ? (
                 <span className="inline-block w-4 h-4 border-2 border-gray-400 border-t-gray-700 rounded-full animate-spin"></span>
@@ -290,7 +290,7 @@ export default function SignupPage() {
                       {passwordStrength.label}
                     </span>
                   </div>
-                  <div className="w-full bg-surface-secondary rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
                     <div 
                       className={`h-full transition-all duration-300 ${passwordStrength.color}`}
                       style={{ width: `${passwordStrength.score}%` }}
