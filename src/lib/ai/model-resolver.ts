@@ -16,6 +16,7 @@
  */
 
 import { bedrock } from '@ai-sdk/amazon-bedrock';
+import { google } from '@ai-sdk/google';
 import { selectModel } from './model-router';
 import { MODEL_TIER_CONFIG, canAccessPreference } from './model-tier.config';
 import type { ModelPreference, UserTier } from './model-tier.config';
@@ -70,6 +71,9 @@ export function resolveUserTier(
  * Delegates entirely to the existing classifyTier() + selectModel() logic
  * in model-router.ts to preserve all existing behavior.
  *
+ * Free users can access T1-T3 via AUTO mode.
+ * Only T4-T5 (hidden tiers) are restricted to paid users.
+ *
  * @param params - User tier and messages for context
  * @returns A ModelSelection using the existing router
  */
@@ -77,19 +81,24 @@ export function selectAutoModel(params: {
   userTier: UserTier;
   messages: Message[];
 }): ModelSelection & { isFallback: boolean; fallbackLevel: number } {
-  // Fully delegates to existing selectModel() — zero duplication
-  const result = selectModel(params.messages);
+  // Fully delegates to existing selectModel() — pass userTier for T4/T5 escalation
+  const result = selectModel(params.messages, [], params.userTier);
 
-  // Access control: if AUTO selected T3 but user is free, override to T2
-  if (params.userTier === 'free' && result.tier === 'T3') {
-    const t2Config = MODEL_TIER_CONFIG['balanced'];
+  // Access control: only restrict T4 and T5 for free users (not T3)
+  // T1-T3 are available to all users in AUTO mode
+  if (params.userTier === 'free' && (result.tier === 'T4' || result.tier === 'T5')) {
+    const t3Config = MODEL_TIER_CONFIG['best'];
     console.log(
-      `[model-resolver] AUTO override: free user got T3, downgrading to T2 (${t2Config.primaryModelId})`,
+      `[model-resolver] AUTO override: free user got ${result.tier}, downgrading to T3 (${t3Config.googleModelId})`,
     );
+    // Use correct provider based on model type
+    const isGoogleModel = t3Config.googleModelId.toLowerCase().includes('gemini');
+    const model = isGoogleModel ? google(t3Config.googleModelId) : bedrock(t3Config.googleModelId);
+    
     return {
-      model: bedrock(t2Config.primaryModelId),
-      tier: 'T2' as ModelTier,
-      modelId: t2Config.primaryModelId,
+      model,
+      tier: 'T3' as ModelTier,
+      modelId: t3Config.googleModelId,
       isFallback: false,
       fallbackLevel: 0,
     };
@@ -172,15 +181,29 @@ export function resolveModel(input: ResolveModelInput): ResolvedModel {
       };
     }
 
-    const modelId = tierEntry.primaryModelId;
+    // Use Google provider for Google models, Bedrock for fallbacks
+    const modelId = tierEntry.googleModelId;
+    const isGoogleModel = modelId.toLowerCase().includes('gemini');
+    
+    // Mark known deprecated models for tracking
+    const deprecatedModels = ['gemini-1.5-flash', 'gemini-1.5-pro'];
+    const isDeprecated = deprecatedModels.includes(modelId);
+    
+    if (isDeprecated) {
+      console.warn(
+        `[model-resolver] Model ${modelId} is known to be deprecated. Will use Bedrock fallback if API fails.`
+      );
+    }
+
+    const model = isGoogleModel ? google(modelId as Parameters<typeof google>[0]) : bedrock(modelId);
 
     console.log(
-      `[model-resolver] Resolved: preference=${preference} → effectivePreference=${effectivePreference} → modelId=${modelId} (tier=${tierEntry.routerTier})`,
+      `[model-resolver] Resolved: preference=${preference} → effectivePreference=${effectivePreference} → modelId=${modelId} (tier=${tierEntry.internalTier}, provider=${isGoogleModel ? 'google' : 'bedrock'}, deprecated=${isDeprecated})`
     );
 
     return {
-      model: bedrock(modelId),
-      tier: tierEntry.routerTier as ModelTier,
+      model,
+      tier: tierEntry.internalTier as ModelTier,
       modelId,
       isAuto: false,
       effectivePreference,
@@ -190,7 +213,7 @@ export function resolveModel(input: ResolveModelInput): ResolvedModel {
     // ---- SAFETY FALLBACK: never break the pipeline ----
     console.error(
       '[model-resolver] Resolution failed, falling back to selectModel():',
-      error,
+      error
     );
     const fallbackResult = selectModel(messages);
     return {
@@ -200,6 +223,22 @@ export function resolveModel(input: ResolveModelInput): ResolvedModel {
       wasOverridden: true,
     };
   }
+}
+
+/**
+ * Check if error is a 404 (model not found)
+ * Used to detect deprecated models at runtime
+ */
+export function is404Error(error: unknown): boolean {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'statusCode' in error &&
+    (error as Record<string, unknown>).statusCode === 404
+  ) {
+    return true;
+  }
+  return false;
 }
 
 // ============================================

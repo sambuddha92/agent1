@@ -15,6 +15,7 @@ import type { Conversation, ChatMessage, MessageRole } from '@/types';
 const MAX_TITLE_LENGTH = 80;
 const MAX_SUMMARY_LENGTH = 120;
 const DEFAULT_CONVERSATIONS_LIMIT = 50;
+const METADATA_DISPLAY_THRESHOLD_SECONDS = 30; // Metadata only shows for messages created within this window
 
 // ============================================
 // Conversation Operations
@@ -152,6 +153,10 @@ export async function deleteConversation(
 /**
  * Get all messages for a conversation, ordered chronologically
  * Uses a single query with ownership check via join to reduce round trips
+ * 
+ * Note: Metadata (model_id and tier) is only returned for messages created
+ * within the METADATA_DISPLAY_THRESHOLD_SECONDS window. Older messages return
+ * null for these fields to ensure ephemeral metadata display only on first load.
  */
 export async function getConversationMessages(
   conversationId: string,
@@ -177,8 +182,18 @@ export async function getConversationMessages(
   }
 
   // Strip the joined conversation data from each message
+  // For old messages (beyond METADATA_DISPLAY_THRESHOLD_SECONDS), strip metadata
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  return (data || []).map(({ conversations, ...msg }) => msg as ChatMessage);
+  return (data || []).map(({ conversations, ...msg }) => {
+    const messageAge = (Date.now() - new Date(msg.created_at).getTime()) / 1000;
+    
+    // Only include metadata for recent messages (ephemeral display)
+    if (messageAge > METADATA_DISPLAY_THRESHOLD_SECONDS) {
+      return { ...msg, model_id: null, tier: null } as ChatMessage;
+    }
+    
+    return msg as ChatMessage;
+  });
 }
 
 /**

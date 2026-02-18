@@ -1,18 +1,14 @@
 /**
  * Model Tier Configuration
  *
- * Maps display-facing model preference options to internal tier classifications.
- * All model IDs are sourced from MODEL_CONFIG — never hardcoded here.
+ * Maps user-facing preferences to internal 5-tier system:
+ * - T1-T3: User-facing (visible in ModelSelector)
+ * - T4-T5: Hidden (auto-escalated by router for paid users)
  *
- * Tier Semantics (FloatGreens):
- *   T1 — Fast:         Cheap, high-throughput. Nova Lite / Nova Micro class.
- *   T2 — Balanced:     Quality + cost tradeoff. Haiku / Nova Pro class.
- *   T3 — Best Quality: Highest quality. Sonnet class. Restricted for free users.
- *
- * NOTE: The existing model-router.ts uses T1=NovaPro, T2=Haiku, T3=Sonnet
- * for AUTO-mode classification. Those assignments are intentional for AUTO logic
- * and are NOT changed. This config only drives explicit user-facing preference
- * overrides (Fast / Balanced / Best Quality) and display metadata.
+ * Provider Strategy:
+ * - Primary: Google AI Studio (cheaper, faster)
+ * - Fallback: Bedrock (reliable safety net)
+ * - Emergency: gemini-2.0-flash (free, immutable)
  */
 
 import { MODEL_CONFIG } from '../constants';
@@ -25,75 +21,154 @@ export type ModelPreference = 'auto' | 'fast' | 'balanced' | 'best';
 
 export type UserTier = 'free' | 'paid';
 
+export type InternalTier = 'T1' | 'T2' | 'T3' | 'T4' | 'T5';
+
 export interface TierDisplayMeta {
   label: string;
   description: string;
   badge: string;
   /** Whether free users can access this tier */
   freeAccess: boolean;
+  /** Whether this tier is visible in ModelSelector UI */
+  visible: boolean;
 }
 
 export interface ModelTierEntry {
-  /** Internal tier key used by model-router */
-  routerTier: 'T1' | 'T2' | 'T3';
-  /** Primary model ID to use for this preference */
-  primaryModelId: string;
-  /** Fallback model ID if primary is unavailable */
-  fallbackModelId: string;
+  /** Internal tier (T1-T5) */
+  internalTier: InternalTier;
+  /** Google primary model (from model-registry) */
+  googleModelId: string;
+  /** Bedrock fallback model */
+  bedrockFallback: string;
   display: TierDisplayMeta;
 }
 
+export interface FullTierConfig extends ModelTierEntry {
+  /** Whether this tier requires paid subscription */
+  paidOnly: boolean;
+  /** Complexity thresholds for auto-escalation */
+  escalationTriggers?: {
+    minMessageLength?: number;
+    maxImages?: number;
+    keywordPatterns?: RegExp;
+  };
+}
+
 // ============================================
-// Tier Configuration Map
+// Full 5-Tier Configuration
 // ============================================
 
 /**
- * Maps each user-facing model preference to a concrete tier configuration.
- *
- * 'auto' is special — it defers to the existing classifyTier() logic in
- * model-router.ts and does not use a fixed model.
+ * Complete tier configuration including hidden tiers T4 and T5
+ * This is the source of truth for all tier information
+ */
+export const FULL_TIER_CONFIG: Record<InternalTier, FullTierConfig> = {
+  T1: {
+    internalTier: 'T1',
+    googleModelId: MODEL_CONFIG.GOOGLE_T1_PRIMARY,
+    bedrockFallback: MODEL_CONFIG.BEDROCK_T1_FALLBACK,
+    paidOnly: false,
+    display: {
+      label: 'Eco',
+      description: 'Fast & efficient, perfect for quick questions',
+      badge: 'leaf',
+      freeAccess: true,
+      visible: true,
+    },
+  },
+  T2: {
+    internalTier: 'T2',
+    googleModelId: MODEL_CONFIG.GOOGLE_T2_PRIMARY,
+    bedrockFallback: MODEL_CONFIG.BEDROCK_T2_FALLBACK,
+    paidOnly: false,
+    display: {
+      label: 'Balanced',
+      description: 'Good answers with reasonable token usage',
+      badge: 'scale',
+      freeAccess: true,
+      visible: true,
+    },
+  },
+  T3: {
+    internalTier: 'T3',
+    googleModelId: MODEL_CONFIG.GOOGLE_T3_PRIMARY,
+    bedrockFallback: MODEL_CONFIG.BEDROCK_T3_FALLBACK,
+    paidOnly: true,
+    display: {
+      label: 'Power',
+      description: 'Maximum quality for complex planning',
+      badge: 'zap',
+      freeAccess: false,
+      visible: true,
+    },
+  },
+  T4: {
+    internalTier: 'T4',
+    googleModelId: MODEL_CONFIG.GOOGLE_T4_PRIMARY,
+    bedrockFallback: MODEL_CONFIG.BEDROCK_T4_FALLBACK,
+    paidOnly: true,
+    display: {
+      label: 'Premium',
+      description: 'Advanced reasoning (auto-escalated)',
+      badge: 'crown',
+      freeAccess: false,
+      visible: false, // Hidden from UI
+    },
+    escalationTriggers: {
+      minMessageLength: MODEL_CONFIG.VERY_COMPLEX_LENGTH,
+      maxImages: 3,
+    },
+  },
+  T5: {
+    internalTier: 'T5',
+    googleModelId: MODEL_CONFIG.GOOGLE_T5_PRIMARY,
+    bedrockFallback: MODEL_CONFIG.BEDROCK_T5_FALLBACK_PRIMARY,
+    paidOnly: true,
+    display: {
+      label: 'Ultra',
+      description: 'Maximum intelligence (auto-escalated)',
+      badge: 'sparkles',
+      freeAccess: false,
+      visible: false, // Hidden from UI
+    },
+    escalationTriggers: {
+      minMessageLength: MODEL_CONFIG.EXTREME_COMPLEXITY_LENGTH,
+      maxImages: 5,
+    },
+  },
+};
+
+/**
+ * User-facing preference to tier mapping (only T1-T3)
+ * T4-T5 are not shown in UI but can be auto-escalated by router
  */
 export const MODEL_TIER_CONFIG: Record<Exclude<ModelPreference, 'auto'>, ModelTierEntry> = {
   fast: {
-    routerTier: 'T1',
-    primaryModelId: MODEL_CONFIG.T1_FALLBACK,   // amazon.nova-lite-v1:0 — cheapest/fastest
-    fallbackModelId: MODEL_CONFIG.T1_MODEL,      // amazon.nova-pro-v1:0  — fallback
-    display: {
-      label: 'Eco',
-      description: 'Fewest tokens, lightest footprint',
-      badge: 'leaf',
-      freeAccess: true,
-    },
+    internalTier: 'T1',
+    googleModelId: FULL_TIER_CONFIG.T1.googleModelId,
+    bedrockFallback: FULL_TIER_CONFIG.T1.bedrockFallback,
+    display: FULL_TIER_CONFIG.T1.display,
   },
   balanced: {
-    routerTier: 'T2',
-    primaryModelId: MODEL_CONFIG.T2_MODEL,       // claude-3-5-haiku
-    fallbackModelId: MODEL_CONFIG.T2_FALLBACK,   // amazon.nova-pro-v1:0
-    display: {
-      label: 'Balanced',
-      description: 'Good answers, reasonable usage',
-      badge: 'scale',
-      freeAccess: true,
-    },
+    internalTier: 'T2',
+    googleModelId: FULL_TIER_CONFIG.T2.googleModelId,
+    bedrockFallback: FULL_TIER_CONFIG.T2.bedrockFallback,
+    display: FULL_TIER_CONFIG.T2.display,
   },
   best: {
-    routerTier: 'T3',
-    primaryModelId: MODEL_CONFIG.T3_MODEL,            // claude-3-5-sonnet
-    fallbackModelId: MODEL_CONFIG.T3_FALLBACK,        // claude-3-5-haiku (fallback)
-    display: {
-      label: 'Power',
-      description: 'Maximum tokens for complex tasks',
-      badge: 'zap',
-      freeAccess: false,  // Paid users only
-    },
+    internalTier: 'T3',
+    googleModelId: FULL_TIER_CONFIG.T3.googleModelId,
+    bedrockFallback: FULL_TIER_CONFIG.T3.bedrockFallback,
+    display: FULL_TIER_CONFIG.T3.display,
   },
 } as const;
 
 export const AUTO_DISPLAY_META: TierDisplayMeta = {
   label: 'AUTO',
   description: 'Adapts to your question — efficient by default',
-  badge: 'sparkles',
+  badge: 'auto',
   freeAccess: true,
+  visible: true,
 };
 
 // ============================================
@@ -101,24 +176,35 @@ export const AUTO_DISPLAY_META: TierDisplayMeta = {
 // ============================================
 
 /**
+ * Check if user can access a tier (not preference)
+ */
+export function canAccessTier(userTier: UserTier, internalTier: InternalTier): boolean {
+  const config = FULL_TIER_CONFIG[internalTier];
+  if (config.paidOnly && userTier === 'free') return false;
+  return true;
+}
+
+/**
  * Determines if a user of a given tier can access a model preference.
  *
  * Free users: auto, fast, balanced allowed. best is locked.
- * Paid users: all preferences allowed.
+ * Paid users: all preferences (but best is still T3, visible).
+ * T4-T5 are never accessible via preference (only auto-escalation).
  */
 export function canAccessPreference(
   userTier: UserTier,
   preference: ModelPreference,
 ): boolean {
-  if (userTier === 'paid') return true;
   if (preference === 'auto') return true;
+  if (userTier === 'paid') return true;
   if (preference === 'best') return false;
-  return MODEL_TIER_CONFIG[preference].display.freeAccess;
+  return true;
 }
 
 /**
  * Get all preference options with access state for a given user tier.
  * Used by the ModelSelector UI to render locked/unlocked states.
+ * Note: Only shows T1-T3 (user-facing tiers).
  */
 export function getPreferenceOptions(userTier: UserTier): Array<{
   value: ModelPreference;
@@ -151,22 +237,41 @@ export function getPreferenceOptions(userTier: UserTier): Array<{
 }
 
 // ============================================
-// Complexity → Preference Mapping (for AUTO mode)
+// Complexity → Internal Tier Mapping (for AUTO mode)
 // ============================================
 
-export type TaskComplexity = 'simple' | 'medium' | 'high';
+export type TaskComplexity = 'simple' | 'medium' | 'complex' | 'very_complex' | 'extreme';
 
 /**
- * Maps task complexity to the appropriate model preference for AUTO mode.
- * Free users are capped at 'balanced' regardless of complexity.
+ * Maps task complexity to internal tier for AUTO mode.
+ * Free users: T1, T2 only.
+ * Paid users: T1-T5 with auto-escalation.
+ */
+export function complexityToTier(
+  complexity: TaskComplexity,
+  userTier: UserTier,
+): InternalTier {
+  if (complexity === 'simple') return 'T1';
+  if (complexity === 'medium') return 'T2';
+  if (complexity === 'complex') {
+    return userTier === 'paid' ? 'T3' : 'T2'; // Free users capped at T2
+  }
+  if (complexity === 'very_complex') {
+    return userTier === 'paid' ? 'T4' : 'T2'; // Paid only
+  }
+  // extreme
+  return userTier === 'paid' ? 'T5' : 'T2'; // Paid only
+}
+
+/**
+ * Legacy support: Map to old preference strings
  */
 export function complexityToPreference(
   complexity: TaskComplexity,
   userTier: UserTier,
 ): Exclude<ModelPreference, 'auto'> {
-  if (complexity === 'simple') return 'fast';
-  if (complexity === 'medium') return 'balanced';
-  // High complexity
-  if (userTier === 'paid') return 'best';
-  return 'balanced'; // Free users never get 'best'
+  const tier = complexityToTier(complexity, userTier);
+  if (tier === 'T1') return 'fast';
+  if (tier === 'T2' || tier === 'T3' || tier === 'T4' || tier === 'T5') return 'balanced';
+  return 'balanced'; // Default
 }

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { API_ENDPOINTS, UI_TEXT } from '@/lib/constants';
-import { Plus, SendHorizontal, X, Camera, Upload, Loader2, Bot } from 'lucide-react';
+import { Plus, SendHorizontal, X, Camera, Upload, Loader2 } from 'lucide-react';
 import { uploadImageClient } from '@/lib/supabase/image-client';
 import { createClient } from '@/lib/supabase/client';
 import ModelSelector from '@/components/ModelSelector';
@@ -13,6 +13,38 @@ import { ChatMessagesSkeleton } from '@/components/Skeletons';
 import { useModelSelector } from '@/hooks/useModelSelector';
 import { resolveUserTier } from '@/lib/ai/model-resolver';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
+
+/**
+ * ModelMetadataDisplay - Ephemeral display of model ID and tier
+ * Shows briefly below assistant message, fades out after 10 seconds
+ */
+interface ModelMetadataDisplayProps {
+  modelId: string;
+  tier: string;
+}
+
+function ModelMetadataDisplay({ modelId, tier }: ModelMetadataDisplayProps) {
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsVisible(false);
+    }, 10000); // 10 seconds
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!isVisible) return null;
+
+  // Convert tier number to T format (e.g., "1" -> "T1")
+  const tierDisplay = typeof tier === 'number' ? `T${tier}` : tier.startsWith('T') ? tier : `T${tier}`;
+
+  return (
+    <div className="model-metadata-ephemeral">
+      <span className="model-metadata-text">{modelId} · {tierDisplay}</span>
+    </div>
+  );
+}
 
 // Simple in-memory cache for loaded conversations
 // Persists across navigation but clears on page refresh
@@ -23,13 +55,12 @@ function ChatPageContent() {
   const searchParams = useSearchParams();
   const conversationIdFromUrl = searchParams.get('id');
 
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(
-    conversationIdFromUrl
-  );
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
+  const [conversationLoadFailed, setConversationLoadFailed] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [uploadedImages, setUploadedImages] = useState<Array<{ image: ImageType; file: File }>>([]);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
@@ -100,11 +131,13 @@ function ChatPageContent() {
       // Cache hit - instant load
       setMessages(cached.messages);
       setCurrentConversationId(conversationId);
+      setConversationLoadFailed(false);
       return;
     }
 
     // Cache miss - show skeleton and fetch
     setIsLoadingConversation(true);
+    setConversationLoadFailed(false);
     
     try {
       const response = await fetch(`${API_ENDPOINTS.CONVERSATIONS}/${conversationId}`);
@@ -127,9 +160,21 @@ function ChatPageContent() {
         
         setMessages(displayMessages);
         setCurrentConversationId(conversationId);
+        setConversationLoadFailed(false);
+      } else {
+        // Handle 404 or other error responses
+        console.error('[chat] Failed to load conversation:', response.status);
+        setConversationLoadFailed(true);
+        setMessages([]);
+        // Clear the URL to show fresh chat state
+        window.history.replaceState(null, '', '/chat');
       }
     } catch (error) {
       console.error('[chat] Error loading conversation:', error);
+      setConversationLoadFailed(true);
+      setMessages([]);
+      // Clear the URL to show fresh chat state
+      window.history.replaceState(null, '', '/chat');
     } finally {
       setIsLoadingConversation(false);
     }
@@ -296,14 +341,13 @@ function ChatPageContent() {
         )}
 
         {/* Empty State */}
-        {messages.length === 0 && !isLoadingConversation && !conversationIdFromUrl && (
+        {messages.length === 0 && !isLoadingConversation && (!conversationIdFromUrl || conversationLoadFailed) && (
           <div className="flex flex-col justify-center items-center h-full px-6 animate-fade-in">
             {/* Model selector in empty state header */}
             <div className="flex items-center gap-2 mb-6">
               <ModelSelector
                 preference={modelPreference}
                 onPreferenceChange={setModelPreference}
-                userTier={userTier}
                 options={modelOptions}
                 onUpgradeClick={logUpgradeInterest}
                 isSaving={isModelSaving}
@@ -327,44 +371,35 @@ function ChatPageContent() {
                 key={message.id}
                 className={`chat-message-row ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}
               >
-                <div
-                  className={`chat-bubble ${
-                    message.role === 'user'
-                      ? 'chat-bubble-user'
-                      : 'chat-bubble-assistant'
-                  }`}
-                >
-                  {message.role === 'user' && (
-                    <>
-                      {(message.imageUrls && message.imageUrls.length > 0
-                        ? message.imageUrls
-                        : message.imageUrl ? [message.imageUrl] : []
-                      ).map((url, _idx) => (
-                        <ChatImage
-                          key={_idx}
-                          src={url}
-                          alt={`Shared image ${_idx + 1}`}
-                          index={_idx}
-                        />
-                      ))}
-                    </>
-                  )}
-                  <p className="chat-bubble-text">
-                    {typeof message.content === 'string' ? message.content : JSON.stringify(message.content)}
-                  </p>
+                <div className="flex flex-col gap-1">
+                  <div
+                    className={`chat-bubble ${
+                      message.role === 'user'
+                        ? 'chat-bubble-user'
+                        : 'chat-bubble-assistant'
+                    }`}
+                  >
+                    {message.role === 'user' && (
+                      <>
+                        {(message.imageUrls && message.imageUrls.length > 0
+                          ? message.imageUrls
+                          : message.imageUrl ? [message.imageUrl] : []
+                        ).map((url, _idx) => (
+                          <ChatImage
+                            key={_idx}
+                            src={url}
+                            alt={`Shared image ${_idx + 1}`}
+                            index={_idx}
+                          />
+                        ))}
+                      </>
+                    )}
+                    <p className="chat-bubble-text">
+                      {typeof message.content === 'string' ? message.content : JSON.stringify(message.content)}
+                    </p>
+                  </div>
                   {message.role === 'assistant' && message.modelId && message.tier && (
-                    <div className="chat-bubble-metadata">
-                      <div className="flex items-center gap-2 text-xs text-text-muted">
-                        <span className="inline-flex items-center gap-1.5 bg-surface/50 px-2 py-1 rounded-md">
-                          <Bot size={14} className="text-primary" />
-                          <span className="font-mono text-xs">{message.modelId}</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 bg-surface/50 px-2 py-1 rounded-md">
-                          <span className="text-primary font-semibold">Tier</span>
-                          <span className="font-mono font-bold text-xs">{message.tier}</span>
-                        </span>
-                      </div>
-                    </div>
+                    <ModelMetadataDisplay modelId={message.modelId} tier={message.tier} />
                   )}
                 </div>
               </div>
@@ -437,7 +472,6 @@ function ChatPageContent() {
               <ModelSelector
                 preference={modelPreference}
                 onPreferenceChange={setModelPreference}
-                userTier={userTier}
                 options={modelOptions}
                 onUpgradeClick={logUpgradeInterest}
                 isSaving={isModelSaving}

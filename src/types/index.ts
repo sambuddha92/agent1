@@ -239,7 +239,7 @@ export interface MessageContent {
   [key: string]: unknown;
 }
 
-export type ModelTier = 'T1' | 'T2' | 'T3';
+export type ModelTier = 'T1' | 'T2' | 'T3' | 'T4' | 'T5';
 
 export interface ModelSelection {
   model: unknown; // Bedrock model instance

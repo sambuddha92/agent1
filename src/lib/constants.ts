@@ -148,16 +148,43 @@ export const WEATHER_CONFIG = {
 } as const;
 
 // ============================================
-// AI Model Configuration (3-Tier System)
+// AI Model Configuration (5-Tier System with Google Primary)
+// ============================================
+// T1-T3: User-facing (free users get T1-T2, paid get all 3)
+// T4-T5: Hidden tiers (paid users only, auto-escalated by router)
+//
+// Provider Strategy: Google Primary → Bedrock Fallback → Immutable Emergency
+// Emergency Model: gemini-2.0-flash (free, always available)
 // ============================================
 
 export const MODEL_CONFIG = {
-  // Primary Models - Optimized for cost & UX
-  T1_MODEL: 'amazon.nova-pro-v1:0',              // Simple tasks, greetings, Q&A
-  T2_MODEL: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',  // Medium complexity, detailed guidance
-  T3_MODEL: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0', // Complex tasks, planning, design
+  // Google AI Studio - Primary (Feb 2026)
+  // FREE TIER MODELS
+  GOOGLE_T1_PRIMARY: 'gemini-2.0-flash',           // FREE! Ultra-fast, high quality
+  GOOGLE_T1_FALLBACK: 'gemini-2.0-flash-lite',     // FREE! Ultra-lightweight alternative
   
-  // Fallback Models - Always available (cost-effective)
+  GOOGLE_T2_PRIMARY: 'gemini-2.0-flash',           // FREE! (gemini-1.5-flash deprecated)
+  GOOGLE_T3_PRIMARY: 'gemini-2.0-pro-exp',         // Advanced model (gemini-1.5-pro deprecated)
+  
+  // PAID TIER MODELS (hidden, paid users only)
+  GOOGLE_T4_PRIMARY: 'gemini-2.0-pro',             // Premium reasoning
+  GOOGLE_T5_PRIMARY: 'gemini-2.5-pro',             // Best available
+  
+  // Bedrock Fallbacks (cost-effective safety net)
+  BEDROCK_T1_FALLBACK: 'amazon.nova-lite-v1:0',
+  BEDROCK_T2_FALLBACK: 'amazon.nova-pro-v1:0',
+  BEDROCK_T3_FALLBACK: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+  BEDROCK_T4_FALLBACK: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
+  BEDROCK_T5_FALLBACK_PRIMARY: 'anthropic.claude-3-opus',
+  BEDROCK_T5_FALLBACK_SECONDARY: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
+  
+  // Emergency Fallback (IMMUTABLE - never changes)
+  EMERGENCY_MODEL: 'gemini-2.0-flash',
+  
+  // Legacy support (will be deprecated)
+  T1_MODEL: 'amazon.nova-pro-v1:0',
+  T2_MODEL: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+  T3_MODEL: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
   T1_FALLBACK: 'amazon.nova-lite-v1:0',
   T2_FALLBACK: 'amazon.nova-pro-v1:0',
   T3_FALLBACK: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
@@ -169,6 +196,10 @@ export const MODEL_CONFIG = {
   LONG_MESSAGE_LENGTH: 300,
   MULTI_QUESTION_THRESHOLD: 2,
   LONG_CONVERSATION_THRESHOLD: 6,
+  
+  // Hidden tier escalation thresholds (paid users only)
+  VERY_COMPLEX_LENGTH: 500,        // Triggers T4
+  EXTREME_COMPLEXITY_LENGTH: 1500, // Triggers T5
 } as const;
 
 // ============================================

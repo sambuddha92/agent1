@@ -1164,39 +1164,73 @@
     background: rgba(0, 0, 0, 0.1);
   }
   
-  /* Sidebar re-open button - shown when sidebar is collapsed */
-  .sidebar-reopen-btn {
-    display: none; /* Hidden on mobile - mobile uses header toggle */
+  /* Sidebar edge handle - drawer pull indicator (flush to viewport edge, thin strip) */
+  .sidebar-edge-handle {
+    display: flex;
     position: fixed;
     top: var(--space-4);
-    left: var(--space-4);
+    left: 0;
     z-index: var(--z-sticky);
     align-items: center;
     justify-content: center;
-    width: 2.75rem;
+    width: 8px;
     height: 2.75rem;
+    padding: 0;
     background: var(--color-primary);
     color: white;
     border: none;
-    border-radius: var(--radius-md);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
     cursor: pointer;
     transition: all var(--transition-fast);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 1px 0 4px rgba(0, 0, 0, 0.12);
+    font-size: var(--text-lg);
+    font-weight: var(--font-bold);
+    overflow: hidden;
   }
   
-  .sidebar-reopen-btn:hover {
+  .sidebar-edge-handle::before {
+    content: '›';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .sidebar-edge-handle:hover {
     background: var(--color-primary-hover);
-    box-shadow: var(--shadow-xl);
-    transform: scale(1.05);
+    box-shadow: 1px 0 8px rgba(0, 0, 0, 0.16);
   }
-  
-  .sidebar-reopen-btn:active {
-    transform: scale(0.95);
+
+  .sidebar-edge-handle:active {
+    background: var(--color-primary-hover);
   }
-  
+
+  .sidebar-edge-handle:focus-visible {
+    outline: 2px solid white;
+    outline-offset: -2px;
+  }
+
+  @media (min-width: 640px) {
+    .sidebar-edge-handle {
+      width: 16px;
+    }
+  }
+
   @media (min-width: 1024px) {
-    .sidebar-reopen-btn {
-      display: flex;
+    .sidebar-edge-handle {
+      width: 24px;
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .sidebar-edge-handle {
+      background: var(--color-primary);
+      box-shadow: 1px 0 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .sidebar-edge-handle:hover {
+      box-shadow: 1px 0 8px rgba(0, 0, 0, 0.4);
     }
   }
   
@@ -1605,6 +1639,7 @@
   
   .chat-bubble {
     max-width: 85%;
+    min-width: 80px;
     padding: var(--space-5) var(--space-6);
     border-radius: var(--radius-2xl);
     line-height: var(--leading-relaxed);
@@ -1615,6 +1650,7 @@
   @media (min-width: 768px) {
     .chat-bubble {
       max-width: 70%;
+      min-width: 120px;
     }
   }
   
@@ -2704,5 +2740,28 @@
   
   a {
     text-decoration: underline;
+  }
+}
+
+/* ===== EPHEMERAL MODEL METADATA ===== */
+/* Fades out after 10 seconds - user doesn't notice but visible for inspection */
+.model-metadata-ephemeral {
+  margin-top: var(--space-2);
+  animation: metadata-fade-out 300ms ease-out 10s forwards;
+}
+
+.model-metadata-text {
+  font-size: 0.625rem;           /* 10px - smallest permissible per design thesis */
+  color: var(--color-text-muted);
+  opacity: 0.45;
+  font-weight: var(--font-normal);
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+
+@keyframes metadata-fade-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
   }
 }

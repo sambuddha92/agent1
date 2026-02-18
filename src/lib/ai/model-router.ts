@@ -28,6 +28,14 @@ const MODEL_CONFIGS: Record<ModelTier, ModelConfig> = {
     primary: MODEL_CONFIG.T3_MODEL,
     fallbacks: [MODEL_CONFIG.T3_FALLBACK, MODEL_CONFIG.T3_FALLBACK_SECONDARY],
   },
+  T4: {
+    primary: MODEL_CONFIG.T3_MODEL,
+    fallbacks: [MODEL_CONFIG.T3_FALLBACK, MODEL_CONFIG.T1_FALLBACK],
+  },
+  T5: {
+    primary: MODEL_CONFIG.T3_MODEL,
+    fallbacks: [MODEL_CONFIG.T3_FALLBACK, MODEL_CONFIG.T1_FALLBACK],
+  },
 };
 
 // --------------- Keyword Sets ---------------
@@ -99,16 +107,35 @@ function isMultiPartQuery(text: string): boolean {
 
 /**
  * Classify message complexity and select appropriate model tier
- * Optimized 3-tier system balancing cost and user experience
+ * Optimized 5-tier system balancing cost and user experience
+ * 
+ * Free users: T1-T3 only (escalation capped)
+ * Paid users: T1-T5 with full escalation for extreme complexity
  * 
  * @param messages - Array of chat messages
- * @returns Model tier (T1-T3) based on complexity analysis
+ * @param userTier - User's subscription tier (defaults to 'free')
+ * @returns Model tier (T1-T5) based on complexity analysis and user tier
  */
-export function classifyTier(messages: Message[]): ModelTier {
+export function classifyTier(messages: Message[], userTier: 'free' | 'paid' = 'free'): ModelTier {
   const text = getLastUserText(messages).trim();
   const len = text.length;
   const userMsgCount = countUserMessages(messages);
   const containsImages = hasImages(messages);
+
+  // ---- T5: Extreme complexity (paid only) ----
+  // Only paid users can access T5 for extreme queries
+  if (userTier === 'paid' && len > MODEL_CONFIG.EXTREME_COMPLEXITY_LENGTH) {
+    if (containsImages && userMsgCount >= 5) return 'T5';
+    if (isMultiPartQuery(text) && len > MODEL_CONFIG.EXTREME_COMPLEXITY_LENGTH) return 'T5';
+  }
+
+  // ---- T4: Very complex tasks (paid only) ----
+  // Paid users get escalated to T4 for sophisticated reasoning needs
+  if (userTier === 'paid') {
+    if (containsImages && userMsgCount >= 3) return 'T4';
+    if (len > MODEL_CONFIG.VERY_COMPLEX_LENGTH && COMPLEX_KEYWORDS.test(text)) return 'T4';
+    if (userMsgCount >= MODEL_CONFIG.LONG_CONVERSATION_THRESHOLD + 5 && COMPLEX_KEYWORDS.test(text)) return 'T4';
+  }
 
   // ---- T3: Complex tasks ----
   // Images always get best model for quality analysis
@@ -140,7 +167,7 @@ export function classifyTier(messages: Message[]): ModelTier {
   if (GREETING_PATTERNS.test(text) && len < 50) return 'T1';
   if (ACK_PATTERNS.test(text)) return 'T1';
   
-  // Very short messages without questions (likely simple statements)
+  // Very short messages without questions (likely simple statement)
   if (len < MODEL_CONFIG.SHORT_MESSAGE_LENGTH && !text.includes('?')) return 'T1';
 
   // ---- Default: T2 ----
@@ -157,13 +184,15 @@ export function classifyTier(messages: Message[]): ModelTier {
  * 
  * @param messages - Array of chat messages
  * @param attemptedModels - Array of previously failed model IDs (for recursive fallback)
+ * @param userTier - User's subscription tier (defaults to 'free')
  * @returns Selected model instance, tier, model ID, and fallback information
  */
 export function selectModel(
   messages: Message[],
-  attemptedModels: string[] = []
+  attemptedModels: string[] = [],
+  userTier: 'free' | 'paid' = 'free'
 ): ModelSelection & { isFallback: boolean; fallbackLevel: number } {
-  const tier = classifyTier(messages);
+  const tier = classifyTier(messages, userTier);
   const config = MODEL_CONFIGS[tier];
   
   // Try to find a model that hasn't been attempted yet

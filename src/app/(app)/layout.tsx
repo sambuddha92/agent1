@@ -4,16 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/actions';
 import { API_ENDPOINTS } from '@/lib/constants';
-import MobileHeader from '@/components/MobileHeader';
 import AppSidebar from '@/components/AppSidebar';
-import { PanelLeftOpen } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import type { Conversation } from '@/types';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  // Initialize sidebar as open on desktop (lg: 1024px+)
-  const [isMenuOpen, setIsMenuOpen] = useState(true);
+  // Initialize sidebar based on viewport: closed on mobile/tablet (< 1024px), open on desktop
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
@@ -33,6 +31,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoadingConversations(false);
     }
+  }, []);
+
+  // Set sidebar default state based on viewport on mount
+  useEffect(() => {
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+    setIsMenuOpen(isDesktop);
   }, []);
 
   // Load user and conversations in parallel on mount
@@ -106,9 +110,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-layout">
-      {/* Mobile Header */}
-      <MobileHeader onMenuToggle={handleMenuToggle} isMenuOpen={isMenuOpen} />
-
       {/* Sidebar/Drawer */}
       <AppSidebar
         isOpen={isMenuOpen}
@@ -131,16 +132,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="app-main">
-        {/* Sidebar re-open toggle - only visible when sidebar is collapsed on desktop */}
+        {/* Sidebar edge handle - drawer pull indicator (only visible when sidebar is collapsed) */}
         {!isMenuOpen && (
           <button
             onClick={handleMenuToggle}
-            className="sidebar-reopen-btn"
+            className="sidebar-edge-handle"
             aria-label="Open sidebar"
-            title="Open sidebar"
-          >
-            <PanelLeftOpen className="w-5 h-5" />
-          </button>
+            title="Tap to open menu"
+          />
         )}
         {children}
       </main>

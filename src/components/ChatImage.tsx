@@ -59,10 +59,10 @@ export function ChatImage({ src, alt, index = 0 }: ChatImageProps) {
   }
 
   return (
-    <div className="mb-3 rounded-lg overflow-hidden relative w-fit">
+    <div className="mb-3 rounded-lg overflow-hidden relative w-full max-w-xs">
       {/* Shimmer placeholder - shows while loading */}
       {state === 'loading' && (
-        <div className="w-48 h-32 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 animate-pulse rounded-lg" />
+        <div className="w-full h-32 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 animate-pulse rounded-lg" />
       )}
       
       {/* Image loads in background, fades in smoothly when ready */}
@@ -70,7 +70,7 @@ export function ChatImage({ src, alt, index = 0 }: ChatImageProps) {
       <img
         src={src}
         alt={alt || `Shared image ${index + 1}`}
-        className={`max-w-xs h-auto object-cover max-h-64 transition-opacity duration-300 ease-out ${
+        className={`w-full h-auto object-cover max-h-64 transition-opacity duration-300 ease-out ${
           state === 'loaded' ? 'opacity-100' : 'opacity-0 absolute inset-0'
         }`}
         onLoad={handleLoad}

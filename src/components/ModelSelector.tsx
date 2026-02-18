@@ -16,11 +16,17 @@
  *   - Visible but disabled
  *   - Show lock icon
  *   - Show "Upgrade" button that logs interest + shows "Growing Soon" modal
+ *
+ * Smart Positioning:
+ *   - Uses portal-based rendering to avoid parent overflow issues
+ *   - Intelligent collision detection keeps menu fully visible
+ *   - Adapts to all screen sizes and trigger positions
  */
 
-import { useState, useRef, useEffect } from 'react';
-import { Lock, ChevronDown, X, Sparkles, Leaf, Scale, Zap } from 'lucide-react';
-import type { ModelPreference, UserTier } from '@/types';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { Lock, ChevronDown, X, Sparkles, Leaf, Scale, Zap, Wand2, Check } from 'lucide-react';
+import type { ModelPreference } from '@/types';
 import type { UseModelSelectorReturn } from '@/hooks/useModelSelector';
 
 // ============================================
@@ -28,6 +34,7 @@ import type { UseModelSelectorReturn } from '@/hooks/useModelSelector';
 // ============================================
 
 const BADGE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  auto: Wand2,
   sparkles: Sparkles,
   leaf: Leaf,
   scale: Scale,
@@ -50,7 +57,6 @@ function BadgeIcon({ badge, className }: { badge: string; className?: string }) 
 interface ModelSelectorProps {
   preference: ModelPreference;
   onPreferenceChange: (preference: ModelPreference) => void;
-  userTier: UserTier;
   options: UseModelSelectorReturn['options'];
   onUpgradeClick: (tier: string) => void;
   isSaving?: boolean;
@@ -150,14 +156,59 @@ function OptionRow({
   onSelect,
   onUpgradeClick,
 }: OptionRowProps) {
+  // For locked options, render card with dimmed text + upgrade button
+  if (locked) {
+    return (
+      <div className="relative border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-surface)]">
+        {/* Content Area - dimmed with gray text */}
+        <div className="px-4 py-3.5 flex flex-col gap-2">
+          {/* Top row: Badge + Label + Lock icon */}
+          <div className="flex items-center gap-2">
+            {/* Badge Icon - dimmed gray */}
+            <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center transition-colors text-[var(--color-text-muted)]/50">
+              <BadgeIcon badge={badge} className="w-5 h-5" />
+            </span>
+
+            {/* Label - gray instead of white */}
+            <span className="text-sm font-semibold text-[var(--color-text-muted)]">
+              {label}
+            </span>
+
+            {/* Lock icon - gray */}
+            <Lock className="w-4 h-4 text-[var(--color-text-muted)]/60 flex-shrink-0 ml-auto" />
+          </div>
+
+          {/* Description - very light gray */}
+          <p className="text-xs leading-relaxed text-[var(--color-text-muted)]/40">
+            {description}
+          </p>
+        </div>
+
+        {/* Upgrade Button Wrapper */}
+        <div className="px-4 pb-3.5 pt-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpgradeClick(value);
+            }}
+            className="w-full text-sm px-3 py-2.5 bg-[var(--color-primary)] text-white rounded-lg font-semibold hover:bg-[var(--color-primary-hover)] hover:shadow-lg hover:shadow-[var(--color-primary)]/40 hover:scale-[1.02] transition-all leading-none cursor-pointer"
+            aria-label={`Upgrade to access ${label}`}
+          >
+            Upgrade
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // For unlocked options, render normal row
   return (
     <div
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all cursor-pointer group ${
-        locked
-          ? 'opacity-60 cursor-not-allowed'
-          : isSelected
-          ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-          : 'hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]'
+      className={`flex flex-col gap-2 px-4 py-3.5 rounded-xl transition-all cursor-pointer group ${
+        isSelected
+          ? 'bg-[var(--color-primary)]/12 border border-[var(--color-primary)]'
+          : 'hover:bg-[var(--color-surface-hover)]'
       }`}
       onClick={() => {
         if (!locked) onSelect(value);
@@ -166,53 +217,39 @@ function OptionRow({
       aria-selected={isSelected}
       aria-disabled={locked}
     >
-      {/* Badge */}
-      <span className="flex-shrink-0 w-6 flex items-center justify-center">
-        <BadgeIcon badge={badge} className="w-4 h-4" />
-      </span>
+      {/* Top row: Badge + Label + Checkmark (if selected) */}
+      <div className="flex items-center gap-2">
+        {/* Badge Icon */}
+        <span className={`flex-shrink-0 w-5 h-5 flex items-center justify-center transition-colors ${
+          isSelected ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'
+        }`}>
+          <BadgeIcon badge={badge} className="w-5 h-5" />
+        </span>
 
-      {/* Text */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span
-            className={`text-sm font-medium truncate ${
-              isSelected ? 'text-[var(--color-primary)]' : ''
-            }`}
-          >
-            {label}
+        {/* Label */}
+        <span className={`text-sm font-semibold ${
+          isSelected ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-primary)]'
+        }`}>
+          {label}
+        </span>
+
+        {/* Recommended Badge */}
+        {value === 'auto' && (
+          <span className="text-xs px-2 py-0.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-md font-medium leading-none whitespace-nowrap">
+            Recommended
           </span>
-          {value === 'auto' && (
-            <span className="text-xs px-1.5 py-0.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full font-medium leading-none">
-              Recommended
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-[var(--color-text-muted)] truncate leading-snug mt-0.5">
-          {description}
-        </p>
+        )}
+
+        {/* Checkmark (for selected) */}
+        {isSelected && (
+          <Check className="w-5 h-5 text-[var(--color-primary)] flex-shrink-0 ml-auto" />
+        )}
       </div>
 
-      {/* Right side: lock icon or checkmark */}
-      <div className="flex-shrink-0 flex items-center gap-1.5">
-        {locked ? (
-          <>
-            <Lock className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onUpgradeClick(value);
-              }}
-              className="text-xs px-2 py-1 bg-[var(--color-primary)] text-white rounded-md font-medium hover:bg-[var(--color-primary-hover)] transition-colors leading-none"
-              aria-label={`Upgrade to access ${label}`}
-            >
-              Upgrade
-            </button>
-          </>
-        ) : isSelected ? (
-          <div className="w-2 h-2 rounded-full bg-[var(--color-primary)]" aria-hidden="true" />
-        ) : null}
-      </div>
+      {/* Description */}
+      <p className="text-xs leading-relaxed text-[var(--color-text-muted)]">
+        {description}
+      </p>
     </div>
   );
 }
@@ -224,7 +261,6 @@ function OptionRow({
 export default function ModelSelector({
   preference,
   onPreferenceChange,
-  userTier,
   options,
   onUpgradeClick,
   isSaving = false,
@@ -232,29 +268,21 @@ export default function ModelSelector({
 }: ModelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
 
-  // Close dropdown on outside click
+  // Client-side only rendering for portal
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    if (isOpen) {
-      document.addEventListener('mousedown', handler);
-    }
-    return () => document.removeEventListener('mousedown', handler);
-  }, [isOpen]);
+    setMounted(true);
+  }, []);
 
-  // Close dropdown on Escape
+  // Close modal on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
+      if (e.key === 'Escape' && isOpen) setIsOpen(false);
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, []);
+  }, [isOpen]);
 
   const currentOption = options.find((o) => o.value === preference) ?? options[0];
 
@@ -266,56 +294,75 @@ export default function ModelSelector({
 
   return (
     <>
-      <div className="relative inline-block" ref={dropdownRef}>
-        {/* Trigger button */}
-        <button
-          type="button"
-          onClick={() => !disabled && setIsOpen((prev) => !prev)}
-          disabled={disabled}
-          className={`
-            flex items-center gap-1.5 px-3 py-1.5
-            bg-[var(--color-surface)] border border-[var(--color-border)]
-            rounded-full text-sm font-medium
-            text-[var(--color-text-secondary)]
-            hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]
-            transition-all duration-150
-            ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-            ${isOpen ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : ''}
-          `}
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          aria-label={`Model: ${currentOption?.label ?? 'AUTO'}`}
-        >
-          <BadgeIcon badge={currentOption?.badge ?? 'sparkles'} className="w-4 h-4" />
-          <span className="hidden sm:inline text-xs font-semibold tracking-wide uppercase">
-            {currentOption?.label ?? 'AUTO'}
-          </span>
-          {isSaving ? (
-            <span className="w-3 h-3 border border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" aria-label="Saving..." />
-          ) : (
-            <ChevronDown
-              className={`w-3 h-3 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}
-              aria-hidden="true"
-            />
-          )}
-        </button>
+      {/* Trigger button - Minimalist pill style */}
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(true)}
+        disabled={disabled}
+        className={`
+          flex items-center gap-2 px-3.5 py-2
+          bg-[var(--color-surface)] border border-[var(--color-border)]
+          rounded-full text-sm font-medium
+          text-[var(--color-text-secondary)] transition-all duration-150
+          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-[var(--color-primary)]/30 hover:bg-[var(--color-surface-hover)]'}
+          ${isOpen ? 'border-[var(--color-primary)]/40 bg-[var(--color-primary)]/5' : ''}
+        `}
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
+        aria-label={`Model: ${currentOption?.label ?? 'AUTO'}`}
+      >
+        <BadgeIcon badge={currentOption?.badge ?? 'auto'} className="w-4 h-4" />
+        <span className="hidden sm:inline text-xs font-medium tracking-normal">
+          {currentOption?.label ?? 'AUTO'}
+        </span>
+        {isSaving ? (
+          <span className="w-3 h-3 border-1.5 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" aria-label="Saving..." />
+        ) : (
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform duration-150 text-[var(--color-text-muted)] ${isOpen ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+        )}
+      </button>
 
-        {/* Dropdown */}
-        {isOpen && (
+      {/* Center Modal - Portal-based */}
+      {mounted && isOpen && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Select model preference"
+        >
+          {/* Backdrop */}
           <div
-            className="absolute left-0 top-full mt-1.5 w-64 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xl z-50 animate-scale-in overflow-hidden"
-            role="listbox"
-            aria-label="Select model preference"
-          >
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Modal Card */}
+          <div className="relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl w-full max-w-sm shadow-2xl animate-scale-in overflow-hidden">
+            {/* Close button */}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors z-10"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
             {/* Header */}
-            <div className="px-3 pt-3 pb-2 border-b border-[var(--color-border)]">
-              <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                AI Mode
+            <div className="px-6 pt-4 pb-2">
+              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
+                Choose Mode
+              </h3>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                Select how you want the AI to respond
               </p>
             </div>
 
             {/* Options */}
-            <div className="p-1.5 space-y-0.5">
+            <div className="px-4 py-3 space-y-1.5">
               {options.map((option) => (
                 <OptionRow
                   key={option.value}
@@ -333,18 +380,10 @@ export default function ModelSelector({
                 />
               ))}
             </div>
-
-            {/* Footer */}
-            <div className="px-3 py-2 border-t border-[var(--color-border)]">
-              <p className="text-xs text-[var(--color-text-muted)] leading-snug">
-                {userTier === 'paid'
-                  ? 'All modes unlocked'
-                  : 'Power mode available for supporters'}
-              </p>
-            </div>
           </div>
-        )}
-      </div>
+        </div>,
+        document.body
+      )}
 
       {/* Coming Soon Modal */}
       {showComingSoon && (
