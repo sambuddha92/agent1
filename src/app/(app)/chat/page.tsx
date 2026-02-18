@@ -225,18 +225,15 @@ function ChatPageContent() {
   };
 
   // Open camera - use native file input on mobile for reliable camera access
-  const handleOpenCamera = () => {
-    // On mobile: use native file input with capture attribute
-    // CRITICAL: click() MUST happen FIRST, before any React state updates
-    // iOS Safari requires click() to be in the direct synchronous call stack
-    // of the user gesture - any prior setState can break the gesture chain
-    if (isMobile) {
+  const handleOpenCamera = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('[Camera] Triggering native input click');
+    setShowPlusMenu(false);
+    // Use setTimeout to ensure menu closes before triggering camera
+    setTimeout(() => {
       cameraInputRef.current?.click();
-      setShowPlusMenu(false);  // State update AFTER click
-    } else {
-      setShowPlusMenu(false);
-      setShowCamera(true);
-    }
+    }, 50);
   };
 
   // Close camera
@@ -604,7 +601,15 @@ function ChatPageContent() {
             type="file"
             accept="image/*"
             capture="environment"
-            style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+            style={{ 
+              position: 'fixed',
+              top: '-1000px',
+              left: 0,
+              width: '1px',
+              height: '1px',
+              opacity: 0,
+              pointerEvents: 'none'
+            }}
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) handleFileUpload(file);

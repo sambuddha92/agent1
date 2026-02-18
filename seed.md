@@ -1,1 +1,2 @@
-Make the agent politely and respectfully decline any solicitation of opinion which are provably not related to garden, balconies or highly correlational 
+Make the agent politely and respectfully decline any solicitation of opinion which are not related to garden, balconies.
+
