@@ -254,8 +254,8 @@ export interface ModelSelection {
 /** User-facing model preference option */
 export type ModelPreference = 'auto' | 'fast' | 'balanced' | 'best';
 
-/** User's subscription tier — determines model access */
-export type UserTier = 'free' | 'paid';
+/** User's capability tier — determines model access */
+export type UserTier = 'guest' | 'free' | 'paid';
 
 // ============================================
 // Image Generation Types

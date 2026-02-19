@@ -1,14 +1,14 @@
 /**
  * GET /api/models/list
  *
- * Returns all available Bedrock foundation models with tier classification.
- * Uses the model-discovery service with 6-hour in-memory cache.
+ * Returns available AI models based on user tier.
+ * Uses the new AI Gateway architecture.
  *
  * Response shape:
  * {
- *   models: DiscoveredModel[],
+ *   models: ModelInfo[],
  *   cachedAt: string (ISO),
- *   tierSummary: { T1: number, T2: number, T3: number, unknown: number }
+ *   tierSummary: { guest: number, free: number, paid: number }
  * }
  *
  * Authentication required.
@@ -16,7 +16,10 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getDiscoveredModels, getModelTierSummary } from '@/lib/ai/model-discovery';
+
+import { getAvailableModels } from '@/lib/ai/router/modelRouter';
+import { resolveUserTier } from '@/lib/ai/router/capabilityResolver';
+import { getProviderStatus } from '@/lib/ai/registry/providerRegistry';
 
 export async function GET() {
   try {
@@ -31,23 +34,53 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch models (cached for 6 hours)
-    const [models, tierSummary] = await Promise.all([
-      getDiscoveredModels(),
-      getModelTierSummary(),
-    ]);
+    // Resolve user tier
+    const userTier = resolveUserTier(user.user_metadata as Record<string, unknown> | null);
+    
+    // Get available models for this user tier
+    const availableModels = getAvailableModels(userTier);
+
+    // Format models for response
+    const formattedModels = availableModels.map((model) => ({
+      id: model.id,
+      provider: model.provider,
+      type: model.type,
+      quality: model.quality,
+      cost: model.cost,
+      speed: model.speed,
+      description: model.description,
+    }));
+
+    // Count by provider
+    const providerCounts = formattedModels.reduce((acc, model) => {
+      acc[model.provider] = (acc[model.provider] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Summary by user tier access
+    const tierSummary = {
+      guest: getAvailableModels('guest').length,
+      free: getAvailableModels('free').length,
+      paid: getAvailableModels('paid').length,
+    };
+
+    // Get provider status
+    const providerStatus = getProviderStatus();
 
     return NextResponse.json(
       {
-        models,
+        models: formattedModels,
         tierSummary,
+        providerCounts,
+        userTier,
+        providerStatus,
         cachedAt: new Date().toISOString(),
-        count: models.length,
+        count: formattedModels.length,
       },
       {
         status: 200,
         headers: {
-          'Cache-Control': 'private, max-age=21600', // 6 hours
+          'Cache-Control': 'private, max-age=21600',
         },
       },
     );

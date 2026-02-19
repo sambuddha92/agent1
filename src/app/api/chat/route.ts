@@ -1,7 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
 import { analyzeImage } from '@/lib/ai/image-analysis';
-import { selectModel } from '@/lib/ai/model-router';
-import { resolveModel, resolveUserTier, parseModelPreference } from '@/lib/ai/model-resolver';
 import { uploadImage } from '@/lib/supabase/image-storage';
 import { createConversation, saveMessage, generateTitle } from '@/lib/conversations';
 import { FLOATGREENS_SYSTEM_PROMPT } from '@/lib/ai/prompts';
@@ -10,7 +8,15 @@ import { chatRequestSchema, validateAndFormat } from '@/lib/validation';
 import { chatRateLimiter } from '@/lib/rate-limit';
 import { streamText } from 'ai';
 import { NextResponse } from 'next/server';
-import type { MessageContent } from '@/types';
+import type { TextPart, ImagePart } from 'ai';
+
+// AI Gateway imports
+import { createGateway } from '@/lib/ai/gateway/aiGateway';
+import { resolveUserTier } from '@/lib/ai/router/capabilityResolver';
+import { detectModality } from '@/lib/ai/router/modelRouter';
+import { getModelForProvider } from '@/lib/ai/config/modelAdapter';
+import type { UserTier } from '@/types';
+import type { ModelPreference } from '@/types';
 
 export async function POST(request: Request) {
   try {
@@ -24,7 +30,10 @@ export async function POST(request: Request) {
 
     // Extract model preference from FormData (defaults to 'auto' if absent)
     const rawModelPreference = formData.get('modelPreference') as string | null;
-    const modelPreference = parseModelPreference(rawModelPreference);
+    const validPreferences = ['auto', 'fast', 'balanced', 'best'];
+    const modelPreference = (rawModelPreference && validPreferences.includes(rawModelPreference)) 
+      ? rawModelPreference as ModelPreference 
+      : 'auto';
 
     // Validate request data (use first image for schema validation if exists)
     const validation = validateAndFormat(chatRequestSchema, {
@@ -150,38 +159,38 @@ export async function POST(request: Request) {
     console.log('[POST /api/chat] Has image:', hasImage);
     console.log('[POST /api/chat] Model preference:', modelPreference);
 
-    // Build message content array for model router
-    // When image is present, include it so classifyTier() detects it correctly
-    const messageContent: string | MessageContent[] = hasImage
-      ? [
-          { type: 'text', text: userMessage || '' } as MessageContent,
-          { type: 'image', image: 'data:image/webp;base64,' } as MessageContent,
-        ]
-      : userMessage || '';
-
-    const messages = [{ role: 'user' as const, content: messageContent, id: 'user-msg' }];
-
-    // ============================================
-    // MODEL RESOLUTION (middleware layer)
-    // ============================================
-    // resolveModel() wraps the existing selectModel() as middleware.
-    // If preference is 'auto', it fully delegates to the existing classifyTier() logic.
-    // On any failure, it falls back to selectModel() — the pipeline is never broken.
-    let selection;
-    try {
-      selection = resolveModel({
-        preference: modelPreference,
-        userTier,
-        messages,
-      });
-      console.log(
-        `[POST /api/chat] Resolved model: preference=${modelPreference} → modelId=${selection.modelId}, tier=${selection.tier}, auto=${selection.isAuto}`
-      );
-    } catch (resolverError) {
-      // SAFETY FALLBACK: if resolver throws, use original selectModel() directly
-      console.error('[POST /api/chat] resolveModel failed, using selectModel fallback:', resolverError);
-      selection = selectModel(messages);
+    // Build message content for the API call
+    // When image is present, include the image URL so the model can see it
+    let apiMessageContent: string | Array<TextPart | ImagePart>;
+    
+    if (hasImage && imageUrl) {
+      // Use the uploaded image URL for the model
+      apiMessageContent = [
+        { type: 'text', text: userMessage || '' } as TextPart,
+        { type: 'image', image: imageUrl } as ImagePart,
+      ];
+    } else {
+      apiMessageContent = userMessage || '';
     }
+
+    // ============================================
+    // MODEL SELECTION - New AI Gateway
+    // ============================================
+    
+    const modality = detectModality(userMessage || undefined);
+    
+    const gatewayOutput = createGateway({
+      userTier: userTier as UserTier,
+      prompt: userMessage || undefined,
+      modality,
+      preference: modelPreference,
+    });
+    
+    const selectedModel = getModelForProvider(gatewayOutput.providerId, gatewayOutput.modelId);
+    
+    console.log(
+      `[POST /api/chat] Resolved model: preference=${modelPreference} → modelId=${gatewayOutput.modelId}, provider=${gatewayOutput.providerId}, modality=${gatewayOutput.modality}, isFree=${gatewayOutput.isFree}`
+    );
 
     // Create conversation if needed
     let finalConversationId = conversationId;
@@ -220,9 +229,10 @@ export async function POST(request: Request) {
 
     const result = streamText({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      model: selection.model as any,
+      model: selectedModel as any,
       system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage || '' }],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      messages: [{ role: 'user', content: apiMessageContent as any }],
     });
 
     // Save assistant message in background after we get the full text
@@ -233,8 +243,8 @@ export async function POST(request: Request) {
           finalConversationId,
           'assistant',
           fullText,
-          selection.modelId,
-          selection.tier
+          gatewayOutput.modelId,
+          gatewayOutput.userTier
         );
         if (savedMessage) {
           console.log('[POST /api/chat] ✓ Saved assistant message to conversation');
@@ -248,8 +258,8 @@ export async function POST(request: Request) {
 
     // Log model selection for monitoring
     console.log('[POST /api/chat] ✓ Response streaming:', {
-      modelId: selection.modelId,
-      tier: selection.tier,
+      modelId: gatewayOutput.modelId,
+      provider: gatewayOutput.providerId,
       preference: modelPreference,
       userTier,
       conversationId: finalConversationId,

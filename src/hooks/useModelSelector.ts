@@ -13,7 +13,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import type { ModelPreference, UserTier } from '@/types';
-import { getPreferenceOptions } from '@/lib/ai/model-tier.config';
+import { getPreferenceOptions } from '@/lib/ai/model-selector';
 
 // ============================================
 // Types

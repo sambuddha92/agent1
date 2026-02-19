@@ -4,18 +4,56 @@ import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { API_ENDPOINTS, UI_TEXT } from '@/lib/constants';
-import { Plus, SendHorizontal, X, Square, Loader2 } from 'lucide-react';
+import { Plus, SendHorizontal, X, Square, Loader2, Zap, Crown, Leaf } from 'lucide-react';
 import { uploadImageClient } from '@/lib/supabase/image-client';
 import { createClient } from '@/lib/supabase/client';
-import ModelSelector from '@/components/ModelSelector';
 import { ChatImage } from '@/components/ChatImage';
 import { ChatMessagesSkeleton } from '@/components/Skeletons';
 import { CameraModal } from '@/components/CameraModal';
 import { AttachmentModal } from '@/components/AttachmentModal';
-import { useModelSelector } from '@/hooks/useModelSelector';
-import { resolveUserTier } from '@/lib/ai/model-resolver';
 import { useCameraCapture } from '@/hooks/useCameraCapture';
 import type { Message, ChatMessage, Image as ImageType, User } from '@/types';
+
+// ─── Capability Badge Component ───────────────────────────────────────────────
+
+interface CapabilityBadgeProps {
+  tier: 'guest' | 'free' | 'paid';
+}
+
+function CapabilityBadge({ tier }: CapabilityBadgeProps) {
+  const config = {
+    guest: {
+      icon: Zap,
+      label: 'Guest',
+      bg: 'bg-amber-500/10',
+      text: 'text-amber-600 dark:text-amber-400',
+      border: 'border-amber-500/20',
+    },
+    free: {
+      icon: Leaf,
+      label: 'Free',
+      bg: 'bg-emerald-500/10',
+      text: 'text-emerald-600 dark:text-emerald-400',
+      border: 'border-emerald-500/20',
+    },
+    paid: {
+      icon: Crown,
+      label: 'Premium',
+      bg: 'bg-violet-500/10',
+      text: 'text-violet-600 dark:text-violet-400',
+      border: 'border-violet-500/20',
+    },
+  };
+  
+  const { icon: Icon, label, bg, text, border } = config[tier];
+  
+  return (
+    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${bg} ${text} ${border}`}>
+      <Icon className="w-3.5 h-3.5" />
+      <span>{label}</span>
+    </div>
+  );
+}
 
 // ─── Model metadata ephemeral display ────────────────────────────────────────
 
@@ -80,18 +118,29 @@ function ChatPageContent() {
   // AbortController for stream cancellation (Stop button)
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // ── User tier + model selector ───────────────────────────────────────────────
-  const userTier = resolveUserTier(
-    (user as unknown as { user_metadata?: Record<string, unknown> })?.user_metadata ?? null
-  );
+  // ── User capability (for UX) ─────────────────────────────────────────────────
+  const [capabilityTier, setCapabilityTier] = useState<'guest' | 'free' | 'paid'>('guest');
+  
+  // Detect user capability from auth
+  useEffect(() => {
+    async function detectCapability() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Check if user has premium (paid) status
+        const isPaid = user.user_metadata?.subscription_tier === 'paid';
+        setCapabilityTier(isPaid ? 'paid' : 'free');
+      } else {
+        setCapabilityTier('guest');
+      }
+    }
+    detectCapability();
+  }, [user]);
 
-  const {
-    preference: modelPreference,
-    setPreference: setModelPreference,
-    options: modelOptions,
-    isSaving: isModelSaving,
-    logUpgradeInterest,
-  } = useModelSelector(currentConversationId, userTier);
+  // Model preference is now automatic - use 'auto' for all requests
+  // The backend will handle model selection based on user tier
+  const modelPreference = 'auto';
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -403,22 +452,35 @@ function ChatPageContent() {
         {/* Empty state */}
         {messages.length === 0 && !isLoadingConversation && (!conversationIdFromUrl || conversationLoadFailed) && (
           <div className="flex flex-col justify-center items-center h-full px-6 animate-fade-in">
-            <div className="flex items-center gap-2 mb-6">
-              <ModelSelector
-                preference={modelPreference}
-                onPreferenceChange={setModelPreference}
-                options={modelOptions}
-                onUpgradeClick={logUpgradeInterest}
-                isSaving={isModelSaving}
-                disabled={isLoading}
-              />
+            {/* Capability Badge - Shows user's current tier */}
+            <div className="mb-6">
+              <CapabilityBadge tier={capabilityTier} />
             </div>
+            
             <h2 className="font-display text-3xl sm:text-4xl lg:text-4xl font-semibold text-primary mb-3 text-center leading-snug tracking-tight">
               {UI_TEXT.CHAT_EMPTY_STATE_TITLE}
             </h2>
-            <p className="text-sm sm:text-base text-text-muted text-center max-w-sm font-light mb-0 leading-relaxed">
+            <p className="text-sm sm:text-base text-text-muted text-center max-w-sm font-light mb-4 leading-relaxed">
               Ask about plant care, share a photo, or get garden design advice.
             </p>
+            
+            {/* Tier-specific messaging */}
+            {capabilityTier === 'guest' && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 text-center max-w-xs">
+                Sign in to save conversations and get personalized plant care.
+              </p>
+            )}
+            {capabilityTier === 'free' && (
+              <p className="text-xs text-violet-600 dark:text-violet-400 text-center max-w-xs">
+                Upgrade to Premium for faster responses and advanced AI features.
+              </p>
+            )}
+            {capabilityTier === 'paid' && (
+              <div className="flex items-center gap-1 text-xs text-violet-600 dark:text-violet-400">
+                <Crown className="w-3 h-3" />
+                <span>Premium active</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -494,20 +556,6 @@ function ChatPageContent() {
           ════════════════════════════════════════ */}
       <div className="chat-footer">
         <form onSubmit={handleSubmit}>
-
-          {/* Model selector row (shown once conversation starts) */}
-          {messages.length > 0 && (
-            <div className="flex items-center justify-center mb-2 max-w-3xl mx-auto">
-              <ModelSelector
-                preference={modelPreference}
-                onPreferenceChange={setModelPreference}
-                options={modelOptions}
-                onUpgradeClick={logUpgradeInterest}
-                isSaving={isModelSaving}
-                disabled={isLoading}
-              />
-            </div>
-          )}
 
           {/* Command Pill */}
           <div className="command-pill">
